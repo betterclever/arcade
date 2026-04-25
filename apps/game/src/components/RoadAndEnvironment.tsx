@@ -225,6 +225,15 @@ function terrainHeight(x: number, z: number, scene: SceneId) {
   const distance = THREE.MathUtils.clamp(-z, 0, roadLength - 1)
   const road = getRoadPoint(distance)
   const fromRoad = Math.abs(x - road.x)
+  if (scene === 'coast') {
+    const oceanSide = smoothstep(18, 170, road.x - x)
+    const inlandSide = smoothstep(42, 260, x - road.x)
+    const headland = Math.sin(distance * 0.006) * 3.2 + Math.cos(distance * 0.0025) * 5.8
+    const cliffDrop = oceanSide * (14 + Math.sin(distance * 0.004) * 3)
+    const hillsideRise = inlandSide * (9 + headland)
+    const nearRoad = smoothstep(roadWidth * 1.25, roadWidth * 4.2, fromRoad)
+    return road.y - 0.36 + hillsideRise - cliffDrop * nearRoad + Math.sin(x * 0.018 + distance * 0.005) * 1.5 * nearRoad
+  }
   const hillStrength = smoothstep(roadWidth * 1.8, 260, fromRoad)
   const broad = Math.sin(x * 0.012 + distance * 0.004) * 5.2
   const detail = Math.cos(x * 0.027 - distance * 0.007) * 2.1
@@ -234,11 +243,9 @@ function terrainHeight(x: number, z: number, scene: SceneId) {
       ? hillStrength * 3
       : scene === 'snow'
         ? hillStrength * 7
-        : scene === 'coast'
-          ? hillStrength * 2.5
-          : scene === 'dusk'
-            ? hillStrength * 5
-            : hillStrength * 4
+        : scene === 'dusk'
+          ? hillStrength * 5
+          : hillStrength * 4
   return road.y - 0.42 + (broad + detail + sceneLift) * hillStrength
 }
 
@@ -507,12 +514,13 @@ function createFences(scene: SceneId): PlacedObject[] {
 
 function createCropRows(scene: SceneId): PlacedObject[] {
   const items: PlacedObject[] = []
-  const count = scene === 'snow' ? 95 : scene === 'coast' ? 118 : 162
+  const count = scene === 'snow' ? 95 : scene === 'coast' ? 72 : 162
   for (let index = 0; index < count; index++) {
     const distance = 90 + index * 30
     const frame = getRoadFrame(distance)
     const euler = frameRotationFromTangent(frame.tangent)
     for (const side of [-1, 1]) {
+      if (scene === 'coast' && side < 0) continue
       if (index % 3 === 0 && side < 0) continue
       const lane = (scene === 'coast' && side < 0 ? 44 : 26) + ((index * 13) % (scene === 'coast' ? 72 : 90))
       const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * lane))
@@ -536,7 +544,7 @@ function createGuardrails(scene: SceneId): PlacedObject[] {
     const frame = getRoadFrame(distance)
     const curveBias = Math.abs(frame.tangent.x)
     if (curveBias < 0.05 && index % 3 !== 0) continue
-    const side = index % 2 === 0 ? 1 : -1
+    const side = scene === 'coast' ? -1 : index % 2 === 0 ? 1 : -1
     const euler = frameRotationFromTangent(frame.tangent)
     const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * (roadWidth / 2 + 3.5)))
     base.y = terrainHeight(base.x, base.z, scene) + 0.45
@@ -715,8 +723,8 @@ export default function RoadAndEnvironment({ textureUrl, winner, scene }: RoadAn
   return (
     <group>
       {scene === 'coast' && (
-        <mesh position={[-210, -0.85, -roadLength / 2]} rotation={[-Math.PI / 2, 0, 0]} matrixAutoUpdate={false}>
-          <planeGeometry args={[260, roadLength + 620]} />
+        <mesh position={[-230, -8.5, -roadLength / 2]} rotation={[-Math.PI / 2, 0, 0]} matrixAutoUpdate={false}>
+          <planeGeometry args={[330, roadLength + 620]} />
           <primitive object={materials.water} attach="material" />
         </mesh>
       )}

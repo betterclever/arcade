@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 
 export interface Bid {
   id: string;
+  roundId?: string;
   amount: number;
   amountUsd?: number;
   bidder: string;
@@ -12,12 +13,46 @@ export interface Bid {
   status?: string;
   paymentReceipt?: unknown;
   timestamp: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface AuctionRound {
+  id: string;
+  status: string;
+  startsAt?: number;
+  endsAt?: number;
+  winningBidId?: string;
+  finalTextureUrl?: string;
+}
+
+export interface SurfaceSnapshot {
+  surface?: {
+    id: string;
+    title?: string;
+    textureUrl?: string;
+  };
+  round?: AuctionRound;
+  rounds?: AuctionRound[];
+  lastClosedRound?: AuctionRound | null;
+  bids: Bid[];
+  bidHistory: Bid[];
+  lastWinner?: Bid | null;
 }
 
 export interface AdSurfaceOptions {
   id: string;
   width: number;
   height: number;
+  title?: string;
+  game?: string;
+  description?: string;
+  placement?: string;
+  aspectRatio?: string;
+  minBidUsd?: number;
+  maxBidUsd?: number;
+  roundDurationMs?: number;
+  tags?: string[];
 }
 
 export interface ArcadeConfig {
@@ -31,6 +66,9 @@ export interface ArcadeConfig {
 export class ArcadeSDK extends EventEmitter {
   private config: ArcadeConfig;
   private currentBids: Bid[] = [];
+  private currentBidHistory: Bid[] = [];
+  private lastWinner: Bid | null = null;
+  private snapshot: SurfaceSnapshot | null = null;
   private currentTexture: string | null = null;
   private mockTimer: NodeJS.Timeout | null = null;
   private events: EventSource | null = null;
@@ -50,8 +88,31 @@ export class ArcadeSDK extends EventEmitter {
     }
   }
 
-  createAdSurface(options: AdSurfaceOptions) {
+  async createAdSurface(options: AdSurfaceOptions) {
     console.log(`[ArcadeSDK] Creating ad surface: ${options.id}`);
+    if (!this.config.mock && !this.usingMockFallback) {
+      const response = await fetch(`${this.config.baseUrl}/surfaces`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({
+          id: options.id,
+          title: options.title ?? options.id,
+          game: options.game ?? 'Arcad Game',
+          description: options.description,
+          placement: options.placement,
+          aspectRatio: options.aspectRatio,
+          dimensions: { width: options.width, height: options.height },
+          minBidUsd: options.minBidUsd ?? 0.001,
+          maxBidUsd: options.maxBidUsd ?? 0.01,
+          roundDurationMs: options.roundDurationMs,
+          tags: options.tags,
+        }),
+      });
+      if (response.status === 409) {
+        return this.refreshSurface();
+      }
+      return this.parseResponse(response);
+    }
     return {
       id: options.id,
       width: options.width,
@@ -74,6 +135,24 @@ export class ArcadeSDK extends EventEmitter {
     return () => this.off('textureUpdated', callback);
   }
 
+  subscribeToBidHistory(callback: (bids: Bid[]) => void) {
+    this.on('bidHistoryUpdated', callback);
+    callback(this.currentBidHistory);
+    return () => this.off('bidHistoryUpdated', callback);
+  }
+
+  subscribeToLastWinner(callback: (bid: Bid | null) => void) {
+    this.on('lastWinnerUpdated', callback);
+    callback(this.lastWinner);
+    return () => this.off('lastWinnerUpdated', callback);
+  }
+
+  subscribeToSurfaceSnapshot(callback: (snapshot: SurfaceSnapshot | null) => void) {
+    this.on('snapshotUpdated', callback);
+    callback(this.snapshot);
+    return () => this.off('snapshotUpdated', callback);
+  }
+
   async submitBid(bid: Omit<Bid, 'id' | 'timestamp'>) {
     if (this.config.mock || this.usingMockFallback) {
       const newBid: Bid = {
@@ -82,7 +161,9 @@ export class ArcadeSDK extends EventEmitter {
         timestamp: Date.now(),
       };
       this.currentBids = [newBid, ...this.currentBids].sort((a, b) => b.amount - a.amount);
+      this.currentBidHistory = [newBid, ...this.currentBidHistory].sort((a, b) => b.timestamp - a.timestamp);
       this.emit('bidsUpdated', this.currentBids);
+      this.emit('bidHistoryUpdated', this.currentBidHistory);
       console.log(`[ArcadeSDK] [Mock] Bid submitted:`, newBid);
       return newBid;
     }
@@ -129,8 +210,10 @@ export class ArcadeSDK extends EventEmitter {
 
   async closeRound() {
     if (this.config.mock || this.usingMockFallback) {
-      this.currentTexture = this.createMockTexture(this.currentBids[0]);
+      this.lastWinner = this.currentBids[0] ?? null;
+      this.currentTexture = this.createMockTexture(this.lastWinner ?? undefined);
       this.emit('textureUpdated', this.currentTexture);
+      this.emit('lastWinnerUpdated', this.lastWinner);
       return null;
     }
     const response = await fetch(`${this.config.baseUrl}/surfaces/${this.config.surfaceId}/close-round`, {
@@ -142,6 +225,11 @@ export class ArcadeSDK extends EventEmitter {
       this.currentTexture = data.texture.textureUrl;
       this.emit('textureUpdated', this.currentTexture);
     }
+    if (data.winningBid) {
+      this.lastWinner = this.normalizeBid(data.winningBid);
+      this.emit('lastWinnerUpdated', this.lastWinner);
+    }
+    await this.refreshSurface().catch(() => undefined);
     return data;
   }
 
@@ -162,12 +250,16 @@ export class ArcadeSDK extends EventEmitter {
           timestamp: Date.now(),
         };
         this.currentBids = [mockBid, ...this.currentBids].sort((a, b) => b.amount - a.amount);
+        this.currentBidHistory = [mockBid, ...this.currentBidHistory].sort((a, b) => b.timestamp - a.timestamp);
         this.emit('bidsUpdated', this.currentBids);
+        this.emit('bidHistoryUpdated', this.currentBidHistory);
 
         // Simulate texture update when a new top bid arrives
         if (this.currentBids[0].id === mockBid.id) {
+          this.lastWinner = mockBid;
           this.currentTexture = this.createMockTexture(mockBid);
           this.emit('textureUpdated', this.currentTexture);
+          this.emit('lastWinnerUpdated', this.lastWinner);
         }
       }
     }, 5000);
@@ -202,6 +294,7 @@ export class ArcadeSDK extends EventEmitter {
       const payload = JSON.parse((event as MessageEvent).data);
       this.currentTexture = payload.update.textureUrl;
       this.emit('textureUpdated', this.currentTexture);
+      this.refreshSurface().catch((error) => console.warn('[ArcadeSDK] Refresh after texture update failed', error));
     });
   }
 
@@ -224,7 +317,21 @@ export class ArcadeSDK extends EventEmitter {
     });
     const data = await this.parseResponse(response);
     this.currentBids = (data.bids ?? []).map((bid: unknown) => this.normalizeBid(bid));
+    this.currentBidHistory = (data.bidHistory ?? data.bids ?? []).map((bid: unknown) => this.normalizeBid(bid));
+    this.lastWinner = data.lastWinner ? this.normalizeBid(data.lastWinner) : null;
+    this.snapshot = {
+      surface: data.surface,
+      round: data.round,
+      rounds: data.rounds ?? [],
+      lastClosedRound: data.lastClosedRound ?? null,
+      bids: this.currentBids,
+      bidHistory: this.currentBidHistory,
+      lastWinner: this.lastWinner,
+    };
     this.emit('bidsUpdated', this.currentBids);
+    this.emit('bidHistoryUpdated', this.currentBidHistory);
+    this.emit('lastWinnerUpdated', this.lastWinner);
+    this.emit('snapshotUpdated', this.snapshot);
     if (data.surface?.textureUrl) {
       this.currentTexture = data.surface.textureUrl;
       this.emit('textureUpdated', this.currentTexture);
@@ -234,12 +341,16 @@ export class ArcadeSDK extends EventEmitter {
   private mergeBid(bid: Bid) {
     const withoutBid = this.currentBids.filter((existing) => existing.id !== bid.id);
     this.currentBids = [bid, ...withoutBid].sort((a, b) => b.amount - a.amount);
+    const withoutHistoryBid = this.currentBidHistory.filter((existing) => existing.id !== bid.id);
+    this.currentBidHistory = [bid, ...withoutHistoryBid].sort((a, b) => b.timestamp - a.timestamp);
     this.emit('bidsUpdated', this.currentBids);
+    this.emit('bidHistoryUpdated', this.currentBidHistory);
   }
 
   private normalizeBid(raw: any): Bid {
     return {
       id: raw.id,
+      roundId: raw.roundId,
       amount: raw.amount ?? raw.amountUsd,
       amountUsd: raw.amountUsd ?? raw.amount,
       bidder: raw.bidder ?? raw.company ?? raw.agentId,
@@ -250,6 +361,8 @@ export class ArcadeSDK extends EventEmitter {
       status: raw.status,
       paymentReceipt: raw.paymentReceipt,
       timestamp: raw.timestamp ?? raw.createdAt ?? Date.now(),
+      createdAt: raw.createdAt ?? raw.timestamp,
+      updatedAt: raw.updatedAt,
     };
   }
 

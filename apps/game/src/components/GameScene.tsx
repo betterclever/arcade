@@ -1,14 +1,18 @@
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Sky } from '@react-three/drei'
 import RoadAndEnvironment from './RoadAndEnvironment'
 import Car, { DrivingTelemetry } from './Car'
 import { Bid } from '@arcade/sdk'
 import { SceneId } from './RoadAndEnvironment'
+import { CarId } from '../data/cars'
 
 interface GameSceneProps {
   textureUrl: string
   winner?: Bid
   scene: SceneId
+  car: CarId
+  playing: boolean
   onTelemetry: (telemetry: DrivingTelemetry) => void
 }
 
@@ -31,7 +35,7 @@ const atmosphere: Record<SceneId, {
   dusk: { background: '#d2a184', fog: '#d2a184', sun: [-70, 18, -90], turbidity: 1.8, rayleigh: 2.5, hemiSky: '#ffd5b3', hemiGround: '#46533c', ambient: 0.72 },
 }
 
-export default function GameScene({ textureUrl, winner, scene, onTelemetry }: GameSceneProps) {
+export default function GameScene({ textureUrl, winner, scene, car, playing, onTelemetry }: GameSceneProps) {
   const mood = atmosphere[scene]
   return (
     <Canvas
@@ -58,7 +62,9 @@ export default function GameScene({ textureUrl, winner, scene, onTelemetry }: Ga
       />
       
       <RoadAndEnvironment textureUrl={textureUrl} winner={winner} scene={scene} />
-      <Car onTelemetry={onTelemetry} />
+      <Suspense fallback={null}>
+        <Car car={car} playing={playing} onTelemetry={onTelemetry} />
+      </Suspense>
     </Canvas>
   )
 }
