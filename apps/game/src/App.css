@@ -311,6 +311,7 @@ button {
 }
 
 .action-panel,
+.round-panel,
 .drive-panel,
 .scene-panel,
 .bid-panel {
@@ -417,6 +418,39 @@ button {
   font-size: 1.08rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.round-stat-grid {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.round-stat-grid div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 32px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.round-stat-grid span {
+  color: rgba(255, 245, 221, 0.48);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.56rem;
+  text-transform: uppercase;
+}
+
+.round-stat-grid strong {
+  overflow: hidden;
+  color: rgba(255, 248, 232, 0.86);
+  font-size: 0.78rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scene-tabs {
