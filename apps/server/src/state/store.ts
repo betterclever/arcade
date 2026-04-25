@@ -24,8 +24,13 @@ class AuctionStore {
   constructor() {
     this.createSurface({
       id: "raceway-billboard-main",
-      title: "Main Raceway Billboard",
-      game: "Arcad Speedway",
+      title: "Switchback Highway Billboard",
+      game: "Arcad Drive",
+      description: "Slow-roads inspired seasonal highway demo with a live roadside billboard visible from the driving line.",
+      placement: "roadside-billboard",
+      aspectRatio: config.geminiImageAspectRatio,
+      dimensions: { width: 3168, height: 1344 },
+      tags: ["driving", "roadside", "billboard", "seasonal", "agent-ads"],
       minBidUsd: 0.001,
       maxBidUsd: 0.01,
       roundDurationMs: config.demoRoundDurationMs,
@@ -36,16 +41,48 @@ class AuctionStore {
     id?: string;
     title: string;
     game: string;
+    description?: string;
+    placement?: string;
+    aspectRatio?: string;
+    dimensions?: {
+      width: number;
+      height: number;
+    };
+    tags?: string[];
     minBidUsd: number;
     maxBidUsd: number;
     roundDurationMs?: number;
   }) {
     const id = input.id ?? nanoid();
+    const existingSurface = this.surfaces.get(id);
+    if (existingSurface) {
+      const updatedSurface: AdSurface = {
+        ...existingSurface,
+        title: input.title,
+        game: input.game,
+        description: input.description,
+        placement: input.placement,
+        aspectRatio: input.aspectRatio,
+        dimensions: input.dimensions,
+        tags: input.tags,
+        minBidUsd: input.minBidUsd,
+        maxBidUsd: input.maxBidUsd,
+        roundDurationMs: input.roundDurationMs ?? existingSurface.roundDurationMs,
+      };
+      this.surfaces.set(id, updatedSurface);
+      publish({ type: "surface.created", surface: updatedSurface });
+      return updatedSurface;
+    }
     const round = this.createRound(id, input.roundDurationMs ?? config.roundDurationMs);
     const surface: AdSurface = {
       id,
       title: input.title,
       game: input.game,
+      description: input.description,
+      placement: input.placement,
+      aspectRatio: input.aspectRatio,
+      dimensions: input.dimensions,
+      tags: input.tags,
       minBidUsd: input.minBidUsd,
       maxBidUsd: input.maxBidUsd,
       roundDurationMs: input.roundDurationMs ?? config.roundDurationMs,
@@ -73,6 +110,10 @@ class AuctionStore {
 
   getSurface(surfaceId: string) {
     return this.surfaces.get(surfaceId);
+  }
+
+  listSurfaces() {
+    return [...this.surfaces.values()];
   }
 
   getBid(bidId: string) {
@@ -116,6 +157,28 @@ class AuctionStore {
 
   getPayment(paymentId: string) {
     return this.payments.find((payment) => payment.id === paymentId);
+  }
+
+  getBidRefundStatus(bidId: string) {
+    const bid = this.bids.get(bidId);
+    if (!bid) throw new Error("Bid not found");
+    const payments = this.listPayments(bid.surfaceId, bid.roundId, bid.id);
+    if (bid.status === "won") {
+      return {
+        status: "settled",
+        reason: "Winning bid authorizations are settled after round close.",
+      };
+    }
+    if (payments.every((payment) => payment.settlementStatus === "released")) {
+      return {
+        status: "released",
+        reason: "This bid lost the round, so its Circle Gateway authorizations were not settled.",
+      };
+    }
+    return {
+      status: "pending",
+      reason: "Bid authorizations are held until the round closes. Only the winning bid is settled.",
+    };
   }
 
   getSurfaceSnapshot(surfaceId: string) {
@@ -188,6 +251,11 @@ class AuctionStore {
     const bid = this.bids.get(bidId);
     if (!bid) throw new Error("Bid not found");
     const surface = this.requireSurface(bid.surfaceId);
+    const round = this.rounds.get(bid.roundId);
+    if (!round || round.status !== "open" || surface.currentRoundId !== round.id) {
+      throw new Error("Bid can only be increased while its round is open");
+    }
+    this.assertSameBidPayer(bid, receipt);
     const nextAmount = Number((bid.amountUsd + deltaUsd).toFixed(6));
     this.assertBidAmount(surface, nextAmount);
     bid.amountUsd = nextAmount;
@@ -208,9 +276,70 @@ class AuctionStore {
     if (winningBid) {
       winningBid.status = "won";
       round.winningBidId = winningBid.id;
+      this.listRoundBids(surfaceId, round.id).forEach((bid) => {
+        if (bid.id !== winningBid.id) bid.status = "rejected";
+      });
     }
     publish({ type: "round.closed", round, winningBid });
     return { round, winningBid };
+  }
+
+  async settleRoundPayments(
+    roundId: string,
+    winningBidId: string,
+    settle: (receipt: PaymentReceipt) => Promise<any>,
+  ) {
+    const roundPayments = this.payments.filter((payment) => payment.roundId === roundId);
+    const settled = [];
+    const released = [];
+    const failed = [];
+
+    for (const payment of roundPayments) {
+      const bid = this.bids.get(payment.bidId);
+      if (payment.bidId !== winningBidId) {
+        payment.settlementStatus = "released";
+        payment.refundStatus = "released";
+        payment.refundReason = "Losing bid authorization released without settlement.";
+        released.push(payment);
+        publish({ type: "payment.recorded", payment });
+        continue;
+      }
+
+      if (!bid) {
+        payment.settlementStatus = "settlement_failed";
+        payment.refundReason = "Missing bid for winning payment.";
+        failed.push(payment);
+        publish({ type: "payment.recorded", payment });
+        continue;
+      }
+
+      const receipt: PaymentReceipt = {
+        mode: payment.mode,
+        receiptId: payment.receiptId,
+        payer: payment.payer,
+        network: payment.network,
+        amountUsd: payment.amountUsd,
+        raw: payment.raw,
+      };
+      const result = await settle(receipt);
+      if (result.success) {
+        payment.settlementStatus = "settled";
+        payment.refundStatus = "not_applicable";
+        payment.refundReason = "Winning bid authorization settled.";
+        payment.transaction = result.transaction ?? payment.transaction;
+        payment.raw = { previous: payment.raw, settlement: result };
+        settled.push(payment);
+      } else {
+        payment.settlementStatus = "settlement_failed";
+        payment.refundStatus = "pending";
+        payment.refundReason = result.errorReason ?? result.error ?? "Winning bid settlement failed.";
+        payment.raw = { previous: payment.raw, settlement: result };
+        failed.push(payment);
+      }
+      publish({ type: "payment.recorded", payment });
+    }
+
+    return { settled, released, failed };
   }
 
   setTexture(update: TextureUpdate) {
@@ -228,6 +357,18 @@ class AuctionStore {
     return update;
   }
 
+  completeRoundWithoutWinner(surfaceId: string, roundId: string) {
+    const surface = this.requireSurface(surfaceId);
+    const round = this.rounds.get(roundId);
+    if (!round) throw new Error("Round not found");
+    if (surface.currentRoundId !== round.id) return round;
+    round.status = "closed";
+    const nextRound = this.createRound(surface.id, surface.roundDurationMs);
+    surface.currentRoundId = nextRound.id;
+    publish({ type: "round.closed", round });
+    return round;
+  }
+
   private requireSurface(surfaceId: string) {
     const surface = this.surfaces.get(surfaceId);
     if (!surface) throw new Error("Surface not found");
@@ -240,6 +381,14 @@ class AuctionStore {
     }
     if (amountUsd > surface.maxBidUsd) {
       throw new Error(`Hackathon demo bids are capped at ${surface.maxBidUsd} USDC`);
+    }
+  }
+
+  private assertSameBidPayer(bid: Bid, receipt: PaymentReceipt) {
+    const existingPayer = this.payments.find((payment) => payment.bidId === bid.id)?.payer;
+    if (!existingPayer || !receipt.payer) return;
+    if (existingPayer.toLowerCase() !== receipt.payer.toLowerCase()) {
+      throw new Error("Bid increases must be authorized by the same payer wallet as the original bid");
     }
   }
 
@@ -266,9 +415,9 @@ class AuctionStore {
       payer: receipt.payer,
       network: receipt.network,
       transaction: extractTransaction(receipt.raw),
-      settlementStatus: receipt.mode === "mock" ? "mock-settled" : "settled",
-      refundStatus: "not_refundable",
-      refundReason: "Arcad bid entry and increase fees pay for auction participation and are not escrowed bid principal.",
+      settlementStatus: receipt.mode === "mock" ? "mock-authorized" : "authorized",
+      refundStatus: receipt.mode === "mock" ? "not_applicable" : "pending",
+      refundReason: "Bid authorization is pending round close. Only the winning bid will be settled.",
       raw: receipt.raw,
       createdAt: Date.now(),
     };

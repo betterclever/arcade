@@ -1,11 +1,20 @@
 import type { Router } from "express";
 import { z } from "zod";
+import { config } from "../config";
 import { store } from "../state/store";
 
 const createSurfaceSchema = z.object({
   id: z.string().min(2).optional(),
   title: z.string().min(2),
   game: z.string().min(2),
+  description: z.string().min(2).optional(),
+  placement: z.string().min(2).optional(),
+  aspectRatio: z.string().min(3).optional(),
+  dimensions: z.object({
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  }).optional(),
+  tags: z.array(z.string().min(1)).optional(),
   minBidUsd: z.number().positive().default(0.001),
   maxBidUsd: z.number().positive().max(0.01).default(0.01),
   roundDurationMs: z.number().int().min(10_000).optional(),
@@ -22,7 +31,17 @@ export function mountSurfaceRoutes(router: Router) {
     const games = [...store.surfaces.values()].reduce<Array<{
       id: string;
       title: string;
-      surfaces: Array<{ id: string; title: string; currentRoundId: string; minBidUsd: number; maxBidUsd: number }>;
+      surfaces: Array<{
+        id: string;
+        title: string;
+        description?: string;
+        placement?: string;
+        aspectRatio?: string;
+        dimensions?: { width: number; height: number };
+        currentRoundId: string;
+        minBidUsd: number;
+        maxBidUsd: number;
+      }>;
     }>>((acc, surface) => {
       const id = slugify(surface.game);
       let game = acc.find((entry) => entry.id === id);
@@ -33,6 +52,10 @@ export function mountSurfaceRoutes(router: Router) {
       game.surfaces.push({
         id: surface.id,
         title: surface.title,
+        description: surface.description,
+        placement: surface.placement,
+        aspectRatio: surface.aspectRatio,
+        dimensions: surface.dimensions,
         currentRoundId: surface.currentRoundId,
         minBidUsd: surface.minBidUsd,
         maxBidUsd: surface.maxBidUsd,
@@ -56,6 +79,14 @@ export function mountSurfaceRoutes(router: Router) {
         endsAt: snapshot.round?.endsAt,
         minBidUsd: surface.minBidUsd,
         maxBidUsd: surface.maxBidUsd,
+        creativeSpec: {
+          placement: surface.placement,
+          aspectRatio: surface.aspectRatio,
+          width: surface.dimensions?.width,
+          height: surface.dimensions?.height,
+          imageSize: config.geminiImageSize,
+          promptHint: "Generate a legible in-game billboard texture only. Avoid poster mockups, dense body copy, tiny disclaimers, or UI chrome.",
+        },
         leadingBid,
         bidCount: snapshot.bids.length,
         lastWinner: snapshot.lastWinner ?? null,

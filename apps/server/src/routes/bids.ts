@@ -1,8 +1,7 @@
 import type { Router } from "express";
 import { z } from "zod";
-import { config } from "../config";
 import { generateBillboardTexture } from "../adapters/gemini";
-import { paymentGuard, receiptFromRequest } from "../adapters/payments";
+import { bidAuthorizationGuard, receiptFromRequest, settleReceipt } from "../adapters/payments";
 import { store } from "../state/store";
 
 const bidSchema = z.object({
@@ -18,8 +17,8 @@ const increaseSchema = z.object({
 });
 
 export async function mountBidRoutes(router: Router) {
-  const bidPayment = await paymentGuard(config.bidEntryFeeUsd);
-  const increasePayment = await paymentGuard(config.bidIncreaseFeeUsd);
+  const bidPayment = await bidAuthorizationGuard((req) => Number(req.body?.amountUsd));
+  const increasePayment = await bidAuthorizationGuard((req) => Number(req.body?.deltaUsd));
 
   router.get("/surfaces/:surfaceId/bids", (req, res) => {
     res.json({ bids: store.listCurrentRoundBids(String(req.params.surfaceId)) });
@@ -31,8 +30,7 @@ export async function mountBidRoutes(router: Router) {
     res.json({
       bid,
       payments: store.listPayments(bid.surfaceId, bid.roundId, bid.id),
-      refundStatus: "not_refundable",
-      refundReason: "Arcad bid entry and increase fees pay for auction participation and are not escrowed bid principal.",
+      refund: store.getBidRefundStatus(bid.id),
     });
   });
 
@@ -41,8 +39,7 @@ export async function mountBidRoutes(router: Router) {
     if (!bid) return res.status(404).json({ error: "Bid not found" });
     res.json({
       bidId: bid.id,
-      status: "not_refundable",
-      reason: "Arcad bid entry and increase fees pay for auction participation and are not escrowed bid principal.",
+      ...store.getBidRefundStatus(bid.id),
       payments: store.listPayments(bid.surfaceId, bid.roundId, bid.id),
     });
   });
@@ -57,7 +54,7 @@ export async function mountBidRoutes(router: Router) {
         amountUsd: input.amountUsd,
         prompt: input.prompt,
         rationale: input.rationale,
-        receipt: receiptFromRequest(req, 0.001),
+        receipt: receiptFromRequest(req, input.amountUsd),
       });
       res.status(201).json({ bid });
     } catch (error) {
@@ -68,7 +65,7 @@ export async function mountBidRoutes(router: Router) {
   router.patch("/bids/:bidId/increase", increasePayment, (req, res, next) => {
     try {
       const input = increaseSchema.parse(req.body);
-      const bid = store.increaseBid(String(req.params.bidId), input.deltaUsd, receiptFromRequest(req, 0.001));
+      const bid = store.increaseBid(String(req.params.bidId), input.deltaUsd, receiptFromRequest(req, input.deltaUsd));
       res.json({ bid });
     } catch (error) {
       next(error);
@@ -80,8 +77,10 @@ export async function mountBidRoutes(router: Router) {
       const surfaceId = String(req.params.surfaceId);
       const { round, winningBid } = store.closeRound(surfaceId);
       if (!winningBid) {
+        store.completeRoundWithoutWinner(surfaceId, round.id);
         return res.json({ round, winningBid: null });
       }
+      const settlement = await store.settleRoundPayments(round.id, winningBid.id, settleReceipt);
 
       const texture = await generateBillboardTexture({
         surfaceId,
@@ -89,7 +88,7 @@ export async function mountBidRoutes(router: Router) {
         winningBid,
       });
       store.setTexture(texture);
-      res.json({ round, winningBid, texture });
+      res.json({ round, winningBid, settlement, texture });
     } catch (error) {
       next(error);
     }

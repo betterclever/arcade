@@ -6,6 +6,7 @@ import { mountAgentRoutes } from "./routes/agents";
 import { mountBidRoutes } from "./routes/bids";
 import { mountEventRoutes } from "./routes/events";
 import { mountSurfaceRoutes } from "./routes/surfaces";
+import { startCampaignManager } from "./campaign-manager";
 
 const app = express();
 app.use(cors());
@@ -40,4 +41,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 app.listen(config.port, () => {
   console.log(`Arcad auction server listening on http://localhost:${config.port}`);
   console.log(`Payment mode: ${isCirclePaymentsEnabled() ? "Circle x402 Nanopayments" : "mock demo payments"}`);
+  startCampaignManager();
 });

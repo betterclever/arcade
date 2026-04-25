@@ -23,7 +23,7 @@ export async function generateBillboardTexture(input: {
 
 function buildBillboardPrompt(bid: Bid) {
   return [
-    "Create a clean 16:9 in-game racing billboard texture.",
+    `Create a clean ${config.geminiImageAspectRatio} in-game roadside billboard texture.`,
     `Advertiser: ${bid.company}.`,
     `Creative direction: ${bid.prompt}`,
     "The billboard must be legible from a moving car, brand-safe, high contrast, with no tiny body copy.",
@@ -37,6 +37,13 @@ async function generateWithGemini(prompt: string) {
   const response = await ai.models.generateContent({
     model: config.geminiImageModel,
     contents: prompt,
+    config: {
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio: config.geminiImageAspectRatio,
+        imageSize: config.geminiImageSize,
+      },
+    },
   });
 
   const parts = response?.candidates?.[0]?.content?.parts ?? response?.parts ?? [];

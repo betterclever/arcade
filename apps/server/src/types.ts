@@ -4,6 +4,14 @@ export interface AdSurface {
   id: string;
   title: string;
   game: string;
+  description?: string;
+  placement?: string;
+  aspectRatio?: string;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  tags?: string[];
   minBidUsd: number;
   maxBidUsd: number;
   roundDurationMs: number;
@@ -38,8 +46,8 @@ export interface PaymentReceipt {
 }
 
 export type PaymentKind = "bid-entry" | "bid-increase";
-export type PaymentSettlementStatus = "mock-settled" | "settled";
-export type PaymentRefundStatus = "not_refundable" | "refunded";
+export type PaymentSettlementStatus = "mock-authorized" | "authorized" | "settled" | "released" | "expired" | "settlement_failed";
+export type PaymentRefundStatus = "pending" | "not_applicable" | "released";
 
 export interface PaymentLedgerEntry {
   id: string;

@@ -14,8 +14,13 @@ export const config = {
       : undefined),
   bidEntryFeeUsd: process.env.BID_ENTRY_FEE_USD ?? "$0.001",
   bidIncreaseFeeUsd: process.env.BID_INCREASE_FEE_USD ?? "$0.001",
+  bidAuthorizationTtlMs: Number(process.env.BID_AUTHORIZATION_TTL_MS ?? 90_000),
+  campaignManagerEnabled: process.env.CAMPAIGN_MANAGER_ENABLED !== "false",
+  campaignManagerIntervalMs: Number(process.env.CAMPAIGN_MANAGER_INTERVAL_MS ?? 5_000),
   googleApiKey: process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY,
   geminiImageModel: process.env.GEMINI_IMAGE_MODEL ?? "gemini-3-pro-image-preview",
+  geminiImageAspectRatio: process.env.GEMINI_IMAGE_ASPECT_RATIO ?? "21:9",
+  geminiImageSize: process.env.GEMINI_IMAGE_SIZE ?? "2K",
   roundDurationMs: Number(process.env.ROUND_DURATION_MS ?? 5 * 60 * 1000),
   demoRoundDurationMs: Number(process.env.DEMO_ROUND_DURATION_MS ?? 30 * 1000),
 };
