@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { config } from "../config";
-import type { AdSurface, AuctionRound, Bid, PaymentReceipt, TextureUpdate } from "../types";
+import type { AdSurface, AuctionRound, Bid, PaymentKind, PaymentLedgerEntry, PaymentReceipt, TextureUpdate } from "../types";
 import { publish } from "./event-bus";
 
 const defaultTexture =
@@ -18,6 +18,7 @@ class AuctionStore {
   surfaces = new Map<string, AdSurface>();
   rounds = new Map<string, AuctionRound>();
   bids = new Map<string, Bid>();
+  payments: PaymentLedgerEntry[] = [];
   textures: TextureUpdate[] = [];
 
   constructor() {
@@ -74,6 +75,10 @@ class AuctionStore {
     return this.surfaces.get(surfaceId);
   }
 
+  getBid(bidId: string) {
+    return this.bids.get(bidId);
+  }
+
   getCurrentRound(surfaceId: string) {
     const surface = this.requireSurface(surfaceId);
     return this.rounds.get(surface.currentRoundId);
@@ -89,6 +94,48 @@ class AuctionStore {
     const round = this.getCurrentRound(surfaceId);
     if (!round) return [];
     return this.listRoundBids(surfaceId, round.id);
+  }
+
+  listRounds(surfaceId: string) {
+    return [...this.rounds.values()]
+      .filter((round) => round.surfaceId === surfaceId)
+      .sort((a, b) => b.startsAt - a.startsAt);
+  }
+
+  getRound(roundId: string) {
+    return this.rounds.get(roundId);
+  }
+
+  listPayments(surfaceId?: string, roundId?: string, bidId?: string) {
+    return this.payments
+      .filter((payment) => !surfaceId || payment.surfaceId === surfaceId)
+      .filter((payment) => !roundId || payment.roundId === roundId)
+      .filter((payment) => !bidId || payment.bidId === bidId)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  getPayment(paymentId: string) {
+    return this.payments.find((payment) => payment.id === paymentId);
+  }
+
+  getSurfaceSnapshot(surfaceId: string) {
+    const surface = this.requireSurface(surfaceId);
+    const round = this.rounds.get(surface.currentRoundId);
+    const rounds = this.listRounds(surfaceId);
+    const closedRounds = rounds.filter((candidate) => candidate.status === "closed");
+    const lastClosedRound = closedRounds[0];
+    const lastWinner = lastClosedRound?.winningBidId ? this.bids.get(lastClosedRound.winningBidId) : undefined;
+    return {
+      surface,
+      round,
+      bids: this.listCurrentRoundBids(surfaceId),
+      bidHistory: this.listBids(surfaceId),
+      rounds,
+      lastClosedRound,
+      lastWinner,
+      payments: this.listPayments(surfaceId),
+      lastRoundPayments: lastClosedRound ? this.listPayments(surfaceId, lastClosedRound.id) : [],
+    };
   }
 
   listRoundBids(surfaceId: string, roundId: string) {
@@ -132,6 +179,7 @@ class AuctionStore {
 
     this.bids.set(bid.id, bid);
     this.refreshLeaders(input.surfaceId);
+    this.recordPayment("bid-entry", bid, input.receipt);
     publish({ type: "bid.created", bid });
     return bid;
   }
@@ -146,6 +194,7 @@ class AuctionStore {
     bid.paymentReceipt = receipt;
     bid.updatedAt = Date.now();
     this.refreshLeaders(bid.surfaceId);
+    this.recordPayment("bid-increase", bid, receipt);
     publish({ type: "bid.increased", bid, deltaUsd });
     return bid;
   }
@@ -201,6 +250,38 @@ class AuctionStore {
       bid.status = index === 0 ? "leading" : "outbid";
     });
   }
+
+  private recordPayment(kind: PaymentKind, bid: Bid, receipt: PaymentReceipt) {
+    const entry: PaymentLedgerEntry = {
+      id: nanoid(),
+      surfaceId: bid.surfaceId,
+      roundId: bid.roundId,
+      bidId: bid.id,
+      agentId: bid.agentId,
+      company: bid.company,
+      kind,
+      amountUsd: receipt.amountUsd,
+      mode: receipt.mode,
+      receiptId: receipt.receiptId,
+      payer: receipt.payer,
+      network: receipt.network,
+      transaction: extractTransaction(receipt.raw),
+      settlementStatus: receipt.mode === "mock" ? "mock-settled" : "settled",
+      refundStatus: "not_refundable",
+      refundReason: "Arcad bid entry and increase fees pay for auction participation and are not escrowed bid principal.",
+      raw: receipt.raw,
+      createdAt: Date.now(),
+    };
+    this.payments.push(entry);
+    publish({ type: "payment.recorded", payment: entry });
+    return entry;
+  }
 }
 
 export const store = new AuctionStore();
+
+function extractTransaction(raw: unknown) {
+  if (!raw || typeof raw !== "object") return undefined;
+  const transaction = (raw as { transaction?: unknown }).transaction;
+  return typeof transaction === "string" ? transaction : undefined;
+}

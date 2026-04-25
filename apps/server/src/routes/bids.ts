@@ -25,6 +25,28 @@ export async function mountBidRoutes(router: Router) {
     res.json({ bids: store.listCurrentRoundBids(String(req.params.surfaceId)) });
   });
 
+  router.get("/bids/:bidId", (req, res) => {
+    const bid = store.getBid(String(req.params.bidId));
+    if (!bid) return res.status(404).json({ error: "Bid not found" });
+    res.json({
+      bid,
+      payments: store.listPayments(bid.surfaceId, bid.roundId, bid.id),
+      refundStatus: "not_refundable",
+      refundReason: "Arcad bid entry and increase fees pay for auction participation and are not escrowed bid principal.",
+    });
+  });
+
+  router.get("/bids/:bidId/refund", (req, res) => {
+    const bid = store.getBid(String(req.params.bidId));
+    if (!bid) return res.status(404).json({ error: "Bid not found" });
+    res.json({
+      bidId: bid.id,
+      status: "not_refundable",
+      reason: "Arcad bid entry and increase fees pay for auction participation and are not escrowed bid principal.",
+      payments: store.listPayments(bid.surfaceId, bid.roundId, bid.id),
+    });
+  });
+
   router.post("/surfaces/:surfaceId/bids", bidPayment, (req, res, next) => {
     try {
       const input = bidSchema.parse(req.body);

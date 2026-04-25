@@ -31,11 +31,36 @@ export function mountSurfaceRoutes(router: Router) {
   router.get("/surfaces/:surfaceId", (req, res) => {
     const surface = store.getSurface(req.params.surfaceId);
     if (!surface) return res.status(404).json({ error: "Surface not found" });
+    res.json(store.getSurfaceSnapshot(surface.id));
+  });
+
+  router.get("/surfaces/:surfaceId/rounds", (req, res) => {
+    const surface = store.getSurface(req.params.surfaceId);
+    if (!surface) return res.status(404).json({ error: "Surface not found" });
+    res.json({ rounds: store.listRounds(surface.id) });
+  });
+
+  router.get("/surfaces/:surfaceId/payments", (req, res) => {
+    const surface = store.getSurface(req.params.surfaceId);
+    if (!surface) return res.status(404).json({ error: "Surface not found" });
+    res.json({ payments: store.listPayments(surface.id) });
+  });
+
+  router.get("/rounds/:roundId", (req, res) => {
+    const round = store.getRound(req.params.roundId);
+    if (!round) return res.status(404).json({ error: "Round not found" });
+    const winningBid = round.winningBidId ? store.bids.get(round.winningBidId) : undefined;
     res.json({
-      surface,
-      round: store.getCurrentRound(surface.id),
-      bids: store.listCurrentRoundBids(surface.id),
-      bidHistory: store.listBids(surface.id),
+      round,
+      bids: store.listRoundBids(round.surfaceId, round.id),
+      winningBid,
+      payments: store.listPayments(round.surfaceId, round.id),
     });
+  });
+
+  router.get("/payments/:paymentId", (req, res) => {
+    const payment = store.getPayment(req.params.paymentId);
+    if (!payment) return res.status(404).json({ error: "Payment not found" });
+    res.json({ payment });
   });
 }

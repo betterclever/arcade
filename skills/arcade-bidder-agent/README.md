@@ -31,6 +31,17 @@ bunx <git_path> wallet deposit 1.00
 bunx <git_path> loop
 ```
 
+Inspect live auction state:
+
+```bash
+bunx <git_path> status
+bunx <git_path> bids
+bunx <git_path> bid-detail <bidId>
+bunx <git_path> winner
+bunx <git_path> payments
+bunx <git_path> refund <bidId>
+```
+
 ## How Funding Works
 
 The skill does not mint or grant USDC. It uses Circle Gateway:
@@ -41,3 +52,5 @@ The skill does not mint or grant USDC. It uses Circle Gateway:
 3. Bids use `GatewayClient.pay(...)` to pay x402-protected Arcad endpoints.
 
 That gives agents a simple "fund once, bid many times" flow.
+Bid entry and increase payments are participation fees, so losing bids are not
+refunded; the payment ledger records `refundStatus`.

@@ -28,6 +28,8 @@ Run it from a git checkout without installing:
 ```bash
 bunx <git_path> wallet create
 bunx <git_path> loop
+bunx <git_path> status
+bunx <git_path> payments
 ```
 
 The demo game defaults to mock SDK mode. To connect it to the real local auction
@@ -80,6 +82,15 @@ COMPANY_NAME=Northline AGENT_ID=northline MAX_BID_USD=0.006 bun run packages/arc
 
 4. Watch bids appear in the game HUD.
 5. Press **Close Round + Render** to generate and display the winning billboard.
+6. Inspect the round and payment ledger:
+
+```bash
+bun run packages/arcad-cli/src/index.ts bids
+bun run packages/arcad-cli/src/index.ts bid-detail <bidId>
+bun run packages/arcad-cli/src/index.ts winner
+bun run packages/arcad-cli/src/index.ts payments
+bun run packages/arcad-cli/src/index.ts refund <bidId>
+```
 
 ## Why Arc/Circle
 

@@ -35,7 +35,8 @@ const DEFAULT_API_URL = "http://localhost:8787/api";
 const DEFAULT_SURFACE_ID = "raceway-billboard-main";
 
 export async function main(argv = process.argv.slice(2)) {
-  const [command, subcommand, ...rest] = argv;
+  const [command] = argv;
+  const args = argv.slice(1);
 
   if (!command || command === "help" || command === "--help" || command === "-h") {
     printHelp();
@@ -43,39 +44,84 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (command === "wallet") {
-    await walletCommand(subcommand ?? "help", rest);
+    const [subcommand = "help", ...rest] = args;
+    await walletCommand(subcommand, rest);
     return;
   }
 
   if (command === "status" || command === "surface") {
-    await printSurface(parseConfig(rest), rest);
+    await printSurface(parseConfig(args), args);
+    return;
+  }
+
+  if (command === "bids") {
+    await printBids(parseConfig(args), args);
+    return;
+  }
+
+  if (command === "rounds") {
+    await printRounds(parseConfig(args), args);
+    return;
+  }
+
+  if (command === "winner" || command === "winners") {
+    await printWinner(parseConfig(args), args);
+    return;
+  }
+
+  if (command === "payments" || command === "txns" || command === "transactions") {
+    await printPayments(parseConfig(args), args);
+    return;
+  }
+
+  if (command === "payment" || command === "txn" || command === "transaction") {
+    const [paymentId, ...rest] = args;
+    await printPayment(parseConfig(rest), paymentId);
+    return;
+  }
+
+  if (command === "bid-detail") {
+    const [bidId, ...rest] = args;
+    await printBidDetail(parseConfig(rest), bidId);
+    return;
+  }
+
+  if (command === "refund") {
+    const [bidId, ...rest] = args;
+    await printRefundStatus(parseConfig(rest), bidId);
+    return;
+  }
+
+  if (command === "supports") {
+    await printPaymentSupport(parseConfig(args), args);
     return;
   }
 
   if (command === "quote") {
-    const quote = await getQuote(parseConfig(rest));
+    const quote = await getQuote(parseConfig(args));
     printJson(quote);
     return;
   }
 
   if (command === "bid") {
-    const response = await bidOnce(parseConfig(rest), rest);
+    const response = await bidOnce(parseConfig(args), args);
     printJson(response);
     return;
   }
 
   if (command === "increase") {
-    const response = await increaseBid(parseConfig(rest), rest);
+    const response = await increaseBid(parseConfig(args), args);
     printJson(response);
     return;
   }
 
   if (command === "loop") {
-    await runLoop(parseConfig(rest), rest);
+    await runLoop(parseConfig(args), args);
     return;
   }
 
-  if (command === "operator" && subcommand === "close-round") {
+  if (command === "operator" && args[0] === "close-round") {
+    const rest = args.slice(1);
     const response = await closeRound(parseConfig(rest), rest);
     printJson(response);
     return;
@@ -93,6 +139,14 @@ Usage:
   arcad wallet balances
   arcad wallet deposit <amount>
   arcad status
+  arcad bids
+  arcad rounds
+  arcad winner
+  arcad payments
+  arcad payment <paymentId>
+  arcad bid-detail <bidId>
+  arcad refund <bidId>
+  arcad supports [--path /surfaces/raceway-billboard-main/bids]
   arcad quote
   arcad bid [--amount 0.005] [--prompt "..."]
   arcad increase --bid <bidId> --delta 0.001
@@ -166,8 +220,67 @@ Circle Faucet:
 
 async function printSurface(config: AgentConfig, argv: string[]) {
   const surfaceId = readFlag(argv, "surface", config.surfaceId);
-  const response = await fetch(`${config.apiUrl}/surfaces/${surfaceId}`);
-  await printResponse(response);
+  printJson(await getJson(config, `/surfaces/${surfaceId}`));
+}
+
+async function printBids(config: AgentConfig, argv: string[]) {
+  const surfaceId = readFlag(argv, "surface", config.surfaceId);
+  printJson(await getJson(config, `/surfaces/${surfaceId}/bids`));
+}
+
+async function printRounds(config: AgentConfig, argv: string[]) {
+  const surfaceId = readFlag(argv, "surface", config.surfaceId);
+  printJson(await getJson(config, `/surfaces/${surfaceId}/rounds`));
+}
+
+async function printWinner(config: AgentConfig, argv: string[]) {
+  const surfaceId = readFlag(argv, "surface", config.surfaceId);
+  const snapshot = await getJson(config, `/surfaces/${surfaceId}`) as {
+    lastClosedRound?: unknown;
+    lastWinner?: unknown;
+    lastRoundPayments?: unknown;
+  };
+  printJson({
+    lastClosedRound: snapshot.lastClosedRound ?? null,
+    lastWinner: snapshot.lastWinner ?? null,
+    payments: snapshot.lastRoundPayments ?? [],
+  });
+}
+
+async function printPayments(config: AgentConfig, argv: string[]) {
+  const surfaceId = readFlag(argv, "surface", config.surfaceId);
+  printJson(await getJson(config, `/surfaces/${surfaceId}/payments`));
+}
+
+async function printPayment(config: AgentConfig, paymentId = "") {
+  if (!paymentId) throw new Error("Usage: arcad payment <paymentId>");
+  printJson(await getJson(config, `/payments/${paymentId}`));
+}
+
+async function printBidDetail(config: AgentConfig, bidId = "") {
+  if (!bidId) throw new Error("Usage: arcad bid-detail <bidId>");
+  printJson(await getJson(config, `/bids/${bidId}`));
+}
+
+async function printRefundStatus(config: AgentConfig, bidId = "") {
+  if (!bidId) throw new Error("Usage: arcad refund <bidId>");
+  printJson(await getJson(config, `/bids/${bidId}/refund`));
+}
+
+async function printPaymentSupport(config: AgentConfig, argv: string[]) {
+  const path = readFlag(argv, "path", `/surfaces/${config.surfaceId}/bids`);
+  const method = readFlag(argv, "method", "POST").toUpperCase();
+  const response = await fetch(`${config.apiUrl}${path}`, {
+    method,
+    headers: { "content-type": "application/json" },
+    body: method === "GET" ? undefined : JSON.stringify({}),
+  });
+  const challenge = response.headers.get("payment-required");
+  printJson({
+    supported: response.status === 402 && Boolean(challenge),
+    status: response.status,
+    challenge: challenge ? decodePaymentRequired(challenge) : null,
+  });
 }
 
 async function getQuote(config: AgentConfig): Promise<Quote> {
@@ -194,7 +307,7 @@ async function bidOnce(config: AgentConfig, argv: string[]) {
     throw new Error(`Invalid bid amount: ${amountFromFlag ?? quote.suggestedBidUsd}`);
   }
 
-  const prompt = readFlag(argv, "prompt") ?? defaultPrompt(config.company);
+  const prompt = readFlag(argv, "prompt") || defaultPrompt(config.company);
   return postJson(config, `/surfaces/${config.surfaceId}/bids`, {
     agentId: config.agentId,
     company: config.company,
@@ -269,6 +382,11 @@ async function paidJson(config: AgentConfig, method: HttpMethod, path: string, b
   return readJsonResponse(response);
 }
 
+async function getJson(config: AgentConfig, path: string) {
+  const response = await fetch(`${config.apiUrl}${path}`);
+  return readJsonResponse(response);
+}
+
 function createGatewayClient() {
   const privateKey = process.env.ARCADE_BUYER_PRIVATE_KEY as `0x${string}` | undefined;
   if (!privateKey) {
@@ -328,10 +446,6 @@ function stripTrailingSlash(value: string) {
   return value.replace(/\/$/, "");
 }
 
-async function printResponse(response: Response) {
-  printJson(await readJsonResponse(response));
-}
-
 async function readJsonResponse(response: Response) {
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
@@ -347,6 +461,18 @@ function printJson(value: unknown) {
 
 function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? value.toString() : value;
+}
+
+function decodePaymentRequired(value: string) {
+  try {
+    return JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+  } catch {
+    try {
+      return JSON.parse(Buffer.from(value, "base64").toString("utf8"));
+    } catch {
+      return value;
+    }
+  }
 }
 
 function messageFromError(error: unknown) {

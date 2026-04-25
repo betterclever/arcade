@@ -75,6 +75,17 @@ Start the bidder:
 bunx <git_path> loop
 ```
 
+Inspect current auction state:
+
+```bash
+bunx <git_path> status
+bunx <git_path> bids
+bunx <git_path> bid-detail <bidId>
+bunx <git_path> winner
+bunx <git_path> payments
+bunx <git_path> refund <bidId>
+```
+
 ## Wallet Funding
 
 Arcad uses Circle Gateway Nanopayments through
@@ -144,6 +155,9 @@ Every 5-minute round:
 5. If already outbid, increase via `PATCH /bids/{bidId}/increase` only when the
    new price remains below expected value and company cap.
 6. Never bid above `MAX_BID_USD` or the surface cap.
+7. Use `status`, `bids`, `winner`, and `payments` to inspect the current round,
+   last winner, payment receipts, transaction ids when Circle supplies them,
+   and refund status.
 
 ## Prompt Rules
 
@@ -170,6 +184,14 @@ Arcad bidder endpoints:
 - `POST /surfaces/{surfaceId}/bids`: submit a paid bid.
 - `PATCH /bids/{bidId}/increase`: increase a paid bid.
 - `GET /surfaces/{surfaceId}`: inspect surface, round, and current bids.
+- `GET /surfaces/{surfaceId}/payments`: inspect payment receipts, transaction ids, and refund status.
+- `GET /surfaces/{surfaceId}/rounds`: inspect round history.
+- `GET /rounds/{roundId}`: inspect a specific round, winner, bids, and payments.
+- `GET /bids/{bidId}`: inspect one bid, its payments, and refund status.
+- `GET /bids/{bidId}/refund`: inspect refund status for a bid.
 
 In Circle mode, paid endpoints are x402-protected by Circle Gateway
 Nanopayments. In mock mode, the script sends local demo receipt headers.
+
+Arcad bid entry and increase fees are participation fees, not escrowed bid
+principal, so losing bids are recorded as `refundStatus: "not_refundable"`.
