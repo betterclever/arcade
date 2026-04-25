@@ -34,6 +34,7 @@ export class ArcadeSDK extends EventEmitter {
   private currentTexture: string | null = null;
   private mockTimer: NodeJS.Timeout | null = null;
   private events: EventSource | null = null;
+  private usingMockFallback = false;
 
   constructor(config: ArcadeConfig = { mock: true, surfaceId: 'raceway-billboard-main' }) {
     super();
@@ -74,7 +75,7 @@ export class ArcadeSDK extends EventEmitter {
   }
 
   async submitBid(bid: Omit<Bid, 'id' | 'timestamp'>) {
-    if (this.config.mock) {
+    if (this.config.mock || this.usingMockFallback) {
       const newBid: Bid = {
         ...bid,
         id: Math.random().toString(36).substr(2, 9),
@@ -98,11 +99,13 @@ export class ArcadeSDK extends EventEmitter {
       }),
     });
     const data = await this.parseResponse(response);
-    return this.normalizeBid(data.bid);
+    const normalized = this.normalizeBid(data.bid);
+    this.mergeBid(normalized);
+    return normalized;
   }
 
   async increaseBid(bidId: string, amount: number) {
-    if (this.config.mock) {
+    if (this.config.mock || this.usingMockFallback) {
       const bid = this.currentBids.find(b => b.id === bidId);
       if (bid) {
         bid.amount += amount;
@@ -119,20 +122,35 @@ export class ArcadeSDK extends EventEmitter {
       body: JSON.stringify({ deltaUsd: amount }),
     });
     const data = await this.parseResponse(response);
-    return this.normalizeBid(data.bid);
+    const normalized = this.normalizeBid(data.bid);
+    this.mergeBid(normalized);
+    return normalized;
   }
 
   async closeRound() {
-    if (this.config.mock) return null;
+    if (this.config.mock || this.usingMockFallback) {
+      this.currentTexture = this.createMockTexture(this.currentBids[0]);
+      this.emit('textureUpdated', this.currentTexture);
+      return null;
+    }
     const response = await fetch(`${this.config.baseUrl}/surfaces/${this.config.surfaceId}/close-round`, {
       method: 'POST',
       headers: this.headers(),
     });
-    return this.parseResponse(response);
+    const data = await this.parseResponse(response);
+    if (data.texture?.textureUrl) {
+      this.currentTexture = data.texture.textureUrl;
+      this.emit('textureUpdated', this.currentTexture);
+    }
+    return data;
   }
 
   private startMockMode() {
     console.log('[ArcadeSDK] Mock mode started');
+    if (!this.currentTexture) {
+      this.currentTexture = this.createMockTexture();
+      this.emit('textureUpdated', this.currentTexture);
+    }
     // Simulate incoming bids and texture updates
     this.mockTimer = setInterval(() => {
       if (Math.random() > 0.7) {
@@ -148,13 +166,7 @@ export class ArcadeSDK extends EventEmitter {
 
         // Simulate texture update when a new top bid arrives
         if (this.currentBids[0].id === mockBid.id) {
-          // Placeholder images for now
-          const mockTextures = [
-            'https://picsum.photos/seed/arcade1/512/512',
-            'https://picsum.photos/seed/arcade2/512/512',
-            'https://picsum.photos/seed/arcade3/512/512',
-          ];
-          this.currentTexture = mockTextures[Math.floor(Math.random() * mockTextures.length)];
+          this.currentTexture = this.createMockTexture(mockBid);
           this.emit('textureUpdated', this.currentTexture);
         }
       }
@@ -163,11 +175,18 @@ export class ArcadeSDK extends EventEmitter {
 
   private async startRealMode() {
     await this.refreshSurface().catch((error) => {
-      console.warn('[ArcadeSDK] Initial refresh failed', error);
+      console.warn('[ArcadeSDK] Initial refresh failed, switching to mock fallback', error);
+      this.startMockFallback();
     });
+
+    if (this.usingMockFallback) return;
 
     const eventsUrl = this.config.eventsUrl ?? `${this.config.baseUrl}/events`;
     this.events = new EventSource(eventsUrl);
+    this.events.onerror = (event) => {
+      console.warn('[ArcadeSDK] Event stream failed, switching to mock fallback', event);
+      this.startMockFallback();
+    };
 
     this.events.addEventListener('bid.created', (event) => {
       const payload = JSON.parse((event as MessageEvent).data);
@@ -184,6 +203,19 @@ export class ArcadeSDK extends EventEmitter {
       this.currentTexture = payload.update.textureUrl;
       this.emit('textureUpdated', this.currentTexture);
     });
+  }
+
+  private startMockFallback() {
+    if (this.usingMockFallback) return;
+    this.usingMockFallback = true;
+    this.events?.close();
+    this.events = null;
+    this.startMockMode();
+  }
+
+  private createMockTexture(bid?: Bid) {
+    const seed = bid?.id ?? Math.random().toString(36).slice(2);
+    return `https://picsum.photos/seed/arcade-${encodeURIComponent(seed)}/1024/512`;
   }
 
   private async refreshSurface() {
