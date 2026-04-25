@@ -16,5 +16,11 @@
   "devDependencies": {
     "bun-types": "latest",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@circle-fin/x402-batching": "^3.0.2",
+    "@x402/core": "^2.10.0",
+    "@x402/evm": "^2.10.0",
+    "viem": "^2.48.4"
   }
 }

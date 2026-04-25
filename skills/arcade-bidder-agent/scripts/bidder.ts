@@ -6,6 +6,7 @@ const maxBidUsd = Number(process.env.MAX_BID_USD ?? "0.01");
 const valuePerImpressionUsd = Number(process.env.VALUE_PER_IMPRESSION_USD ?? "0.00002");
 const expectedImpressions = Number(process.env.EXPECTED_IMPRESSIONS ?? "350");
 const intervalMs = Number(process.env.BID_LOOP_MS ?? 5 * 60 * 1000);
+const paymentMode = process.env.ARCADE_PAYMENT_MODE ?? "mock";
 
 async function tick() {
   const quote = await postJson("/agents/quote", {
@@ -38,6 +39,28 @@ async function tick() {
 }
 
 async function postJson(path: string, body: unknown) {
+  if (paymentMode === "circle" && isPaidPath(path)) {
+    const { GatewayClient } = await import("@circle-fin/x402-batching/client");
+    const privateKey = process.env.ARCADE_BUYER_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error("ARCADE_BUYER_PRIVATE_KEY is required when ARCADE_PAYMENT_MODE=circle");
+    }
+
+    const client = new GatewayClient({
+      chain: (process.env.ARCADE_CHAIN ?? "arcTestnet") as "arcTestnet",
+      privateKey: privateKey as `0x${string}`,
+      rpcUrl: process.env.ARCADE_RPC_URL,
+    });
+
+    const result = await client.pay(`${apiUrl}${path}`, {
+      method: path.includes("/increase") ? "PATCH" : "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+
+    return result.data;
+  }
+
   const response = await fetch(`${apiUrl}${path}`, {
     method: "POST",
     headers: {
@@ -52,6 +75,10 @@ async function postJson(path: string, body: unknown) {
     throw new Error(`${response.status} ${JSON.stringify(data)}`);
   }
   return data;
+}
+
+function isPaidPath(path: string) {
+  return path.includes("/bids");
 }
 
 await tick();
