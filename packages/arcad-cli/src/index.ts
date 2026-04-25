@@ -554,10 +554,44 @@ function requiredFlag(argv: string[], name: string) {
 }
 
 function defaultPrompt(company: string) {
+  const profile = process.env.BRAND_PROFILE ?? `${company} is an AI company buying a premium SF game billboard.`;
+  const category = process.env.BRAND_CATEGORY ?? "AI company";
+  const concepts = [
+    {
+      headline: "Ship Agents Tonight",
+      scene: "a glowing command center above the Bay Bridge, agent workflow cards launching like race telemetry",
+      palette: "electric cyan, graphite, and white",
+    },
+    {
+      headline: "Inference At Speed",
+      scene: "GPU server lanes turning into light trails beside a foggy SF highway",
+      palette: "signal green, black glass, and warm sodium streetlights",
+    },
+    {
+      headline: "Your AI Pit Crew",
+      scene: "sleek autonomous agents tuning a startup dashboard like a race car in the pits",
+      palette: "deep navy, brushed steel, and vivid amber",
+    },
+    {
+      headline: "Models, No Waiting",
+      scene: "low-latency model tokens streaking from downtown SF to roadside billboards",
+      palette: "violet dusk, white type, and neon magenta accents",
+    },
+    {
+      headline: "Ops On Autopilot",
+      scene: "a clean AI control tower coordinating tasks across a night city grid",
+      palette: "midnight blue, soft lime, and crisp white",
+    },
+  ];
+  const index = Math.abs([...`${company}:${Date.now()}:${Math.random()}`].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % concepts.length;
+  const concept = concepts[index];
   return [
-    `Create a premium in-game racing billboard for ${company}.`,
-    "Use bold readable logo text, fast motion, and one memorable product hero.",
-    "The ad should feel native to a racing game and stay legible from a moving car.",
+    `21:9 roadside game billboard for ${company}, a ${category}.`,
+    `Readable headline: "${concept.headline}".`,
+    `Brand profile: ${profile}`,
+    `Visual: ${concept.scene}.`,
+    `Style: polished SF AI launch ad, ${concept.palette}, high contrast, one strong product metaphor, brand mark visible.`,
+    "Must be legible from a moving car; no dense body copy, no poster mockup, no tiny disclaimers.",
   ].join(" ");
 }
 

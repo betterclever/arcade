@@ -25,7 +25,7 @@ const controlExtension =
 	process.env.PI_CONTROL_EXTENSION ??
 	`${process.env.HOME}/.local/share/nvm/v25.9.0/lib/node_modules/mitsupi/extensions/control.ts`;
 
-const agents = (process.env.ARCAD_WATCH_AGENTS ?? "volt-rush:arcad-volt-rush,northline:arcad-northline")
+const agents = (process.env.ARCAD_WATCH_AGENTS ?? "mission-control-ai:arcad-mission-control-ai,sutro-inference:arcad-sutro-inference")
 	.split(",")
 	.map((entry) => {
 		const [agentId, sessionName] = entry.split(":");
@@ -121,6 +121,7 @@ function buildMessage(agentId: string, leader: Bid, mine?: Bid): string {
 		"3. If increasing, use: bun run packages/arcad-cli/src/index.ts increase --bid <yourBidId> --delta <delta>",
 		"4. If not worth it, hold/skip and log why.",
 		"5. Append a JSONL memory entry.",
+		"6. If you place a new bid later, vary the creative from memory; prompts must describe headline, scene, product metaphor, colors, and SF AI audience fit.",
 		"Use bash only. Do not edit source files. Do not reveal private keys.",
 	].join("\n");
 }
@@ -135,8 +136,9 @@ function buildEmptyRoundMessage(agentId: string, market: Market): string {
 		"React now with one cycle:",
 		"1. Run campaigns, bids, and status.",
 		"2. If the placement is worth it under MAX_BID_USD, place an opening bid.",
-		"3. If bidding, use: bun run packages/arcad-cli/src/index.ts bid --amount <amount> --prompt \"<short billboard prompt>\"",
-		"4. Append a JSONL memory entry.",
+		"3. If bidding, use: bun run packages/arcad-cli/src/index.ts bid --amount <amount> --prompt \"<rich billboard creative prompt>\"",
+		"4. Prompt must be fresh versus memory and include readable headline, SF AI buyer angle, visual scene/product metaphor, color/mood, and legibility constraints.",
+		"5. Append a JSONL memory entry.",
 		"Use bash only. Do not edit source files. Do not reveal private keys.",
 	].join("\n");
 }

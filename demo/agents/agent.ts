@@ -205,10 +205,21 @@ async function readJsonResponse<T = unknown>(response: Response): Promise<T> {
 }
 
 function defaultPrompt(company: string) {
+  const profile = process.env.BRAND_PROFILE ?? `${company} is an SF AI company buying a premium in-game billboard.`;
+  const category = process.env.BRAND_CATEGORY ?? "AI company";
+  const concepts = [
+    ["Ship Agents Tonight", "a glowing agent operations dashboard over the Bay Bridge, workflow cards moving like race telemetry", "electric cyan, graphite, and white"],
+    ["Inference At Speed", "GPU server lanes becoming light trails on a foggy SF highway", "signal green, black glass, and warm streetlights"],
+    ["Your AI Pit Crew", "autonomous agents tuning a founder dashboard like a race car in the pits", "deep navy, brushed steel, and vivid amber"],
+    ["Models, No Waiting", "multimodal model tokens streaking through downtown SF toward the road", "violet dusk, white type, and neon magenta"],
+  ];
+  const [headline, scene, palette] = concepts[Math.floor(Math.random() * concepts.length)];
   return [
-    `Create a premium in-game roadside billboard for ${company}.`,
-    "Use readable logo text, one product hero, strong contrast, and a sense of speed.",
-    "Keep it native to an open-road driving game.",
+    `21:9 roadside game billboard for ${company}, a ${category}.`,
+    `Readable headline: "${headline}".`,
+    `Brand profile: ${profile}`,
+    `Visual: ${scene}.`,
+    `Style: polished SF AI launch ad, ${palette}, high contrast, readable from a moving car, no dense body copy.`,
   ].join(" ");
 }
 

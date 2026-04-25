@@ -177,19 +177,26 @@ Every 5-minute round:
 
 ## Prompt Rules
 
-The prompt should describe a billboard edit, not a full ad campaign.
+The prompt should describe the billboard image, not just the company name and
+not a full ad campaign.
+
+Each new bid should vary the creative from recent memory. Rotate at least two
+of: headline, product metaphor, scene, color palette, mood, or audience angle.
+For the SF hackathon demo, strong bidder personas include AI agent companies
+and inference providers selling to founders, researchers, and engineering teams.
 
 Good:
 
 ```text
-Create a high-contrast racing billboard for VoltRush with readable yellow logo
-text, a cold aluminum can, and a tight motion-blur background.
+21:9 roadside game billboard for Sutro Inference, headline "Inference At
+Speed", visual of GPU server lanes turning into foggy SF highway light trails,
+signal green and black glass palette, readable from a moving car, no dense copy.
 ```
 
 Bad:
 
 ```text
-Make the whole game about us and cover every surface.
+Sutro Inference logo.
 ```
 
 ## API Reference

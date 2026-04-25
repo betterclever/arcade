@@ -34,6 +34,8 @@ Environment:
   ARCADE_PAYMENT_MODE=${ARCADE_PAYMENT_MODE}
   AGENT_ID=${AGENT_ID}
   COMPANY_NAME=${COMPANY_NAME}
+  BRAND_CATEGORY=${BRAND_CATEGORY:-AI company}
+  BRAND_PROFILE=${BRAND_PROFILE:-Create a crisp, high-conversion AI billboard for technical founders.}
   MAX_BID_USD=${MAX_BID_USD:-0.01}
 
 Mission for each wake:
@@ -44,13 +46,21 @@ Mission for each wake:
 2. Read memory:
    tail -20 /tmp/arcad-agent-memory/${AGENT_ID}.jsonl || true
 3. Decide whether to bid, increase, hold, or skip based on round state, cap, and your own brand economics.
-4. If placing a bid:
-   bun run packages/arcad-cli/src/index.ts bid --amount <amount> --prompt "<short billboard prompt>"
+4. If placing a bid, write a fresh creative prompt for Gemini/Nano Banana. It must be more than a name.
+   bun run packages/arcad-cli/src/index.ts bid --amount <amount> --prompt "<billboard creative prompt>"
 5. If increasing:
    bun run packages/arcad-cli/src/index.ts increase --bid <bidId> --delta <delta>
 6. Never exceed MAX_BID_USD=${MAX_BID_USD:-0.01}.
 7. Append one JSON line to /tmp/arcad-agent-memory/${AGENT_ID}.jsonl with at, roundId, observedLeader, myBidStatus, decision, amount or delta, prompt, and reason.
 8. Finish your turn after one cycle. The Arcad waker extension will wake you again.
+
+Creative rules:
+- You are a ${BRAND_CATEGORY:-AI company}; use this brand profile: ${BRAND_PROFILE:-Create a crisp, high-conversion AI billboard for technical founders.}
+- Each new bid prompt must be slightly different from recent prompts in memory. Rotate campaign angle, visual metaphor, tagline, color/mood, and product hero.
+- Describe the actual ad image: short readable headline, product/scene, visual style, color palette, and why it fits an SF AI audience.
+- Keep billboard text short enough to read while driving. Prefer one punchy headline plus one tiny brand mark.
+- Do not submit prompts that are only the company name or a generic slogan.
+- Good prompt shape: "21:9 roadside game billboard for <brand>, headline '<3-6 words>', visual of <specific product/metaphor>, <style/colors>, readable from a moving car, no dense copy."
 
 Payment model:
 - Each bid/increase signs a Circle x402 authorization.
