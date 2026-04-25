@@ -17,7 +17,7 @@ function App() {
   const [bidHistory, setBidHistory] = useState<Bid[]>([])
   const [lastWinner, setLastWinner] = useState<Bid | null>(null)
   const [surfaceSnapshot, setSurfaceSnapshot] = useState<SurfaceSnapshot | null>(null)
-  const [textureUrl, setTextureUrl] = useState<string>('https://picsum.photos/seed/arcade-open-road/1024/512')
+  const [textureUrl, setTextureUrl] = useState<string>('')
   const [telemetry, setTelemetry] = useState<DrivingTelemetry>({ speed: 0, steering: 0 })
   const [scene, setScene] = useState<SceneId>('meadow')
   const [car, setCar] = useState<CarId>('sedan')

@@ -69,7 +69,6 @@ const sceneOptions: SceneId[] = ['meadow', 'alpine', 'snow', 'autumn', 'coast', 
 
 export default function HUD({ bids, bidHistory, activeWinner, snapshot, textureUrl, telemetry, mock, scene, car, onSceneChange, onCarChange, onHide }: HUDProps) {
   const liveLeader = bids[0]
-  const displayWinner = activeWinner ?? liveLeader
   const [now, setNow] = useState(Date.now())
   const roundMsRemaining = snapshot?.round?.endsAt ? snapshot.round.endsAt - now : 0
   const timelineRounds = useMemo(() => {
@@ -115,19 +114,19 @@ export default function HUD({ bids, bidHistory, activeWinner, snapshot, textureU
           <button className="ghost-button" onClick={onHide} type="button">H hide</button>
         </div>
         <div className="campaign-card">
-          <div className="campaign-label">{activeWinner ? 'on billboard now' : 'waiting for first render'}</div>
+          <div className="campaign-label">last billboard winner</div>
           <div className="campaign-row">
             <div className="campaign-copy">
-              <h1>{displayWinner?.company ?? displayWinner?.bidder ?? 'Open Road Auction'}</h1>
-              <p>{displayWinner?.prompt ?? 'Close a round to render the winning campaign onto every roadside billboard.'}</p>
+              <h1>{activeWinner?.company ?? activeWinner?.bidder ?? 'No winner yet'}</h1>
+              <p>{activeWinner?.prompt ?? 'Background agents are bidding. The winning prompt and rendered billboard image will appear here after the first round closes.'}</p>
             </div>
-            <div className="campaign-price">{displayWinner ? money(displayWinner.amountUsd ?? displayWinner.amount) : 'idle'}</div>
+            <div className="campaign-price">{activeWinner ? money(activeWinner.amountUsd ?? activeWinner.amount) : 'pending'}</div>
           </div>
           <div className="render-preview">
-            <img src={textureUrl} alt="" />
+            {activeWinner && textureUrl ? <img src={textureUrl} alt="" /> : <div className="render-placeholder" />}
             <div>
-              <span>render source</span>
-              <strong>{activeWinner ? 'last winning image' : 'live surface fallback'}</strong>
+              <span>winning image</span>
+              <strong>{activeWinner && textureUrl ? 'rendered from ad server' : 'waiting for generated render'}</strong>
             </div>
           </div>
         </div>

@@ -222,7 +222,8 @@ button {
   box-shadow: inset 0 1px 0 rgba(255, 245, 221, 0.09);
 }
 
-.render-preview img {
+.render-preview img,
+.render-placeholder {
   display: block;
   width: 96px;
   aspect-ratio: 21 / 9;
@@ -230,6 +231,12 @@ button {
   object-fit: cover;
   background: rgba(0, 0, 0, 0.18);
   outline: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.render-placeholder {
+  background:
+    linear-gradient(135deg, rgba(255, 245, 221, 0.1), rgba(255, 245, 221, 0.03)),
+    rgba(0, 0, 0, 0.18);
 }
 
 .render-preview span {
