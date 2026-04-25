@@ -32,7 +32,7 @@ function ControlButton({ label, inputKey }: { label: string, inputKey: DriveInpu
   )
 }
 
-const sceneOptions: SceneId[] = ['meadow', 'alpine', 'desert', 'dusk']
+const sceneOptions: SceneId[] = ['meadow', 'alpine', 'snow', 'autumn', 'coast', 'desert', 'dusk']
 
 export default function HUD({ bids, sdk, telemetry, mock, scene, onSceneChange }: HUDProps) {
   const currentWinner = bids[0]

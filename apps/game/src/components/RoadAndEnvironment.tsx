@@ -4,7 +4,7 @@ import { Bid } from '@arcade/sdk'
 import Billboard, { makeBillboardTexture } from './Billboard'
 import { getRoadFrame, getRoadPoint, roadLength, roadWidth } from '../utils/roadCurve'
 
-export type SceneId = 'meadow' | 'alpine' | 'desert' | 'dusk'
+export type SceneId = 'meadow' | 'alpine' | 'desert' | 'dusk' | 'snow' | 'autumn' | 'coast'
 
 interface RoadAndEnvironmentProps {
   textureUrl: string
@@ -61,6 +61,57 @@ const scenes: Record<SceneId, {
     treeB: '#4f7b3f',
     trunk: '#5e432c',
     rock: '#777c72',
+  },
+  snow: {
+    terrain: '#dbe8ea',
+    shoulder: '#eef4f1',
+    road: '#eef1ee',
+    line: '#f8f2c8',
+    edgeLine: '#f4f7f1',
+    rail: '#cbd7d8',
+    hedge: '#d7e6df',
+    cropA: '#edf3ee',
+    cropB: '#c7d6d7',
+    roadTextureA: '#303a3c',
+    roadTextureB: '#617174',
+    treeA: '#153b32',
+    treeB: '#6f8d80',
+    trunk: '#514438',
+    rock: '#b8c5c5',
+  },
+  autumn: {
+    terrain: '#897d49',
+    shoulder: '#a99a66',
+    road: '#f1ece2',
+    line: '#f0dcab',
+    edgeLine: '#ddb15d',
+    rail: '#c8b389',
+    hedge: '#7d5930',
+    cropA: '#b17834',
+    cropB: '#d0a64a',
+    roadTextureA: '#3d403c',
+    roadTextureB: '#72675a',
+    treeA: '#8a4f23',
+    treeB: '#bd812c',
+    trunk: '#5b3f2b',
+    rock: '#8d806c',
+  },
+  coast: {
+    terrain: '#6f9b70',
+    shoulder: '#b1c79d',
+    road: '#eef0e8',
+    line: '#f3e8bd',
+    edgeLine: '#f1efdd',
+    rail: '#d7d4c4',
+    hedge: '#466f50',
+    cropA: '#90b86e',
+    cropB: '#c9b873',
+    roadTextureA: '#3b4647',
+    roadTextureB: '#697878',
+    treeA: '#245d4c',
+    treeB: '#5f8757',
+    trunk: '#654a31',
+    rock: '#8b9188',
   },
   alpine: {
     terrain: '#6f8b74',
@@ -177,7 +228,17 @@ function terrainHeight(x: number, z: number, scene: SceneId) {
   const hillStrength = smoothstep(roadWidth * 1.8, 260, fromRoad)
   const broad = Math.sin(x * 0.012 + distance * 0.004) * 5.2
   const detail = Math.cos(x * 0.027 - distance * 0.007) * 2.1
-  const sceneLift = scene === 'alpine' ? hillStrength * 10 : scene === 'desert' ? hillStrength * 3 : scene === 'dusk' ? hillStrength * 5 : hillStrength * 4
+  const sceneLift = scene === 'alpine'
+    ? hillStrength * 10
+    : scene === 'desert'
+      ? hillStrength * 3
+      : scene === 'snow'
+        ? hillStrength * 7
+        : scene === 'coast'
+          ? hillStrength * 2.5
+          : scene === 'dusk'
+            ? hillStrength * 5
+            : hillStrength * 4
   return road.y - 0.42 + (broad + detail + sceneLift) * hillStrength
 }
 
@@ -446,13 +507,14 @@ function createFences(scene: SceneId): PlacedObject[] {
 
 function createCropRows(scene: SceneId): PlacedObject[] {
   const items: PlacedObject[] = []
-  for (let index = 0; index < 162; index++) {
+  const count = scene === 'snow' ? 95 : scene === 'coast' ? 118 : 162
+  for (let index = 0; index < count; index++) {
     const distance = 90 + index * 30
     const frame = getRoadFrame(distance)
     const euler = frameRotationFromTangent(frame.tangent)
     for (const side of [-1, 1]) {
       if (index % 3 === 0 && side < 0) continue
-      const lane = 26 + ((index * 13) % 90)
+      const lane = (scene === 'coast' && side < 0 ? 44 : 26) + ((index * 13) % (scene === 'coast' ? 72 : 90))
       const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * lane))
       base.y = terrainHeight(base.x, base.z, scene) + 0.08
       items.push({
@@ -530,7 +592,11 @@ function createProps(count: number, scene: SceneId): PlacedObject[] {
 
     const kind = scene === 'desert'
       ? (index % 5 === 0 ? 'sign' : index % 3 === 0 ? 'rock' : 'tree')
-      : (index % 8 === 0 ? 'lamp' : index % 6 === 0 ? 'sign' : index % 5 === 0 ? 'rock' : 'tree')
+      : scene === 'snow'
+        ? (index % 7 === 0 ? 'sign' : index % 4 === 0 ? 'rock' : 'tree')
+        : scene === 'coast'
+          ? (index % 7 === 0 ? 'sign' : index % 3 === 0 ? 'rock' : 'tree')
+          : (index % 8 === 0 ? 'lamp' : index % 6 === 0 ? 'sign' : index % 5 === 0 ? 'rock' : 'tree')
 
     return {
       position: [position.x, position.y, position.z],
@@ -629,11 +695,13 @@ export default function RoadAndEnvironment({ textureUrl, winner, scene }: RoadAn
     edge: new THREE.MeshBasicMaterial({ color: theme.edgeLine }),
     rumble: new THREE.MeshBasicMaterial({ color: '#cfc5a5' }),
     hedge: new THREE.MeshLambertMaterial({ color: theme.hedge }),
-    fence: new THREE.MeshLambertMaterial({ color: scene === 'desert' ? '#9d7b55' : '#896a46' }),
+    fence: new THREE.MeshLambertMaterial({ color: scene === 'desert' ? '#9d7b55' : scene === 'snow' ? '#c4bca6' : '#896a46' }),
     cropA: new THREE.MeshLambertMaterial({ color: theme.cropA }),
     cropB: new THREE.MeshLambertMaterial({ color: theme.cropB }),
     terrain: new THREE.MeshLambertMaterial({ color: theme.terrain, map: textures.ground }),
     shoulder: new THREE.MeshLambertMaterial({ color: theme.shoulder }),
+    water: new THREE.MeshBasicMaterial({ color: '#6fb7c7', transparent: true, opacity: 0.62 }),
+    snowMist: new THREE.MeshBasicMaterial({ color: '#eef7f8', transparent: true, opacity: 0.24, depthWrite: false }),
     road: new THREE.MeshLambertMaterial({ color: theme.road, map: textures.road }),
     trunk: new THREE.MeshLambertMaterial({ color: theme.trunk }),
     treeA: new THREE.MeshLambertMaterial({ color: scene === 'desert' ? theme.treeA : theme.treeA }),
@@ -646,6 +714,18 @@ export default function RoadAndEnvironment({ textureUrl, winner, scene }: RoadAn
 
   return (
     <group>
+      {scene === 'coast' && (
+        <mesh position={[-210, -0.85, -roadLength / 2]} rotation={[-Math.PI / 2, 0, 0]} matrixAutoUpdate={false}>
+          <planeGeometry args={[260, roadLength + 620]} />
+          <primitive object={materials.water} attach="material" />
+        </mesh>
+      )}
+      {scene === 'snow' && (
+        <mesh position={[0, 0.35, -roadLength / 2]} rotation={[-Math.PI / 2, 0, 0]} matrixAutoUpdate={false}>
+          <planeGeometry args={[660, roadLength + 260]} />
+          <primitive object={materials.snowMist} attach="material" />
+        </mesh>
+      )}
       <mesh geometry={terrainGeometry} material={materials.terrain} matrixAutoUpdate={false} />
       <mesh geometry={shoulderGeometry} material={materials.shoulder} matrixAutoUpdate={false} />
       <mesh geometry={roadGeometry} material={materials.road} matrixAutoUpdate={false} />
