@@ -24,8 +24,9 @@ Circle Nanopayments mode:
 
 ```bash
 export ARCADE_PAYMENT_MODE="circle"
-export ARCADE_BUYER_PRIVATE_KEY="0x..."
+export ARCAD_WALLET_PASSWORD="demo-password"
 export ARCADE_CHAIN="arcTestnet"
+bunx <git_path> wallet new bidder
 bunx <git_path> faucet
 bunx <git_path> wallet balances
 bunx <git_path> wallet deposit 1.00

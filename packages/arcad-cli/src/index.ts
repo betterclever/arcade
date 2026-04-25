@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { privateKeyToAccount } from "viem/accounts";
 import { GatewayClient, type SupportedChainName } from "@circle-fin/x402-batching/client";
 
@@ -35,6 +38,9 @@ interface BidResponse {
 const DEFAULT_API_URL = "http://localhost:8787/api";
 const DEFAULT_SURFACE_ID = "raceway-billboard-main";
 const CIRCLE_FAUCET_URL = "https://faucet.circle.com/";
+const ARCAD_HOME = process.env.ARCAD_HOME ?? join(homedir(), ".arcad");
+const ACTIVE_WALLET_FILE = join(ARCAD_HOME, "active-wallet");
+const KEYSTORE_DIR = process.env.ARCAD_KEYSTORE_DIR ?? join(ARCAD_HOME, "keystores");
 
 export async function main(argv = process.argv.slice(2)) {
   const [command] = argv;
@@ -141,7 +147,11 @@ function printHelp() {
   console.log(`Arcad CLI
 
 Usage:
-  arcad wallet create
+  arcad wallet new [name]
+  arcad wallet import <name> --private-key 0x...
+  arcad wallet list
+  arcad wallet use <name>
+  arcad wallet whoami
   arcad wallet address
   arcad wallet balances
   arcad wallet deposit <amount>
@@ -162,7 +172,7 @@ Usage:
   arcad operator close-round
 
 Install from git:
-  bunx <git_path> wallet create
+  bunx <git_path> wallet new bidder
   bunx <git_path> loop
 
 Core env:
@@ -173,16 +183,15 @@ Core env:
   ARCADE_PAYMENT_MODE=mock | circle
 
 Circle mode:
-  ARCADE_BUYER_PRIVATE_KEY=0x...
+  ARCAD_WALLET_PASSWORD=...
   ARCADE_CHAIN=arcTestnet
   ARCADE_RPC_URL=https://...
 
 Funding:
-  1. arcad wallet create
+  1. arcad wallet new bidder
   2. arcad faucet
-  3. export ARCADE_BUYER_PRIVATE_KEY=0x...
-  4. arcad wallet deposit 1.00
-  5. arcad loop
+  3. arcad wallet deposit 1.00
+  4. arcad loop
 `);
 }
 
@@ -209,7 +218,7 @@ async function openFaucet(argv: string[]) {
       "Then run: arcad wallet deposit 1.00",
     ],
     note: wallet.generatedPrivateKey
-      ? "A fresh wallet was generated because ARCADE_BUYER_PRIVATE_KEY and --address were not provided. Store the private key securely and export it before depositing."
+      ? "A fresh wallet was generated because no active Arcad wallet or --address was provided. Store the private key securely or run `arcad wallet new <name>` to create a managed keystore."
       : "Use the same address/private key for faucet funding and Gateway deposit.",
   });
 }
@@ -219,9 +228,9 @@ function resolveFaucetWallet(explicitAddress: string) {
     return { address: explicitAddress, generatedPrivateKey: undefined };
   }
 
-  const privateKey = process.env.ARCADE_BUYER_PRIVATE_KEY as `0x${string}` | undefined;
-  if (privateKey) {
-    return { address: privateKeyToAccount(privateKey).address, generatedPrivateKey: undefined };
+  const activeWallet = getActiveWalletName();
+  if (activeWallet) {
+    return { address: addressForAccount(activeWallet), generatedPrivateKey: undefined };
   }
 
   const generatedPrivateKey = `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
@@ -232,20 +241,60 @@ function resolveFaucetWallet(explicitAddress: string) {
 }
 
 async function walletCommand(command: string, argv: string[]) {
-  if (command === "create") {
+  if (command === "create" || command === "new") {
+    const name = argv[0] && !argv[0].startsWith("--") ? argv[0] : `agent-${Date.now()}`;
     const privateKey = `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
     const account = privateKeyToAccount(privateKey);
-    printJson({ privateKey, address: account.address });
+    await importKeystore(name, privateKey);
+    setActiveWallet(name);
+    printJson({ name, address: account.address, active: true, keystoreDir: KEYSTORE_DIR });
+    return;
+  }
+
+  if (command === "import") {
+    const name = argv[0];
+    if (!name || name.startsWith("--")) throw new Error("Usage: arcad wallet import <name> --private-key 0x...");
+    const privateKey = requiredFlag(argv, "private-key") as `0x${string}`;
+    await importKeystore(name, privateKey);
+    setActiveWallet(name);
+    printJson({ name, address: privateKeyToAccount(privateKey).address, active: true, keystoreDir: KEYSTORE_DIR });
+    return;
+  }
+
+  if (command === "list" || command === "ls") {
+    printJson({ active: getActiveWalletName(), wallets: listWallets(), keystoreDir: KEYSTORE_DIR });
+    return;
+  }
+
+  if (command === "use") {
+    const name = argv[0];
+    if (!name) throw new Error("Usage: arcad wallet use <name>");
+    if (!walletExists(name)) throw new Error(`Wallet not found: ${name}`);
+    setActiveWallet(name);
+    printJson({ active: name, address: addressForAccount(name) });
+    return;
+  }
+
+  if (command === "whoami" || command === "active") {
+    const name = requireActiveWalletName();
+    printJson({ active: name, address: addressForAccount(name), keystoreDir: KEYSTORE_DIR });
     return;
   }
 
   if (command === "help" || !["address", "balances", "deposit"].includes(command)) {
     console.log(`Arcad wallet commands
 
-  wallet create              Generate a fresh EVM private key and address
-  wallet address             Print address for ARCADE_BUYER_PRIVATE_KEY
+  wallet new [name]                       Create an encrypted Foundry keystore
+  wallet import <name> --private-key 0x   Import a key into the keystore
+  wallet list                             List local Arcad wallets
+  wallet use <name>                       Select the active wallet
+  wallet whoami                           Show active wallet and address
+  wallet address                          Print active wallet address
   wallet balances            Show wallet and Circle Gateway balances
   wallet deposit <amount>    Deposit USDC into Circle Gateway, e.g. 1.00
+
+Env:
+  ARCAD_WALLET_PASSWORD=...               Non-interactive keystore password
 
 Circle Faucet:
   https://faucet.circle.com/
@@ -441,10 +490,7 @@ async function getJson(config: AgentConfig, path: string) {
 }
 
 function createGatewayClient() {
-  const privateKey = process.env.ARCADE_BUYER_PRIVATE_KEY as `0x${string}` | undefined;
-  if (!privateKey) {
-    throw new Error("ARCADE_BUYER_PRIVATE_KEY is required. Run `arcad wallet create` or export an existing key.");
-  }
+  const privateKey = loadActivePrivateKey();
 
   return new GatewayClient({
     chain: (process.env.ARCADE_CHAIN ?? "arcTestnet") as SupportedChainName,
@@ -520,6 +566,90 @@ function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? value.toString() : value;
 }
 
+async function importKeystore(name: string, privateKey: `0x${string}`) {
+  ensureArcadHome();
+  if (!process.env.ARCAD_WALLET_PASSWORD) {
+    throw new Error("ARCAD_WALLET_PASSWORD is required for demo keystore import/new. Set it before running wallet new/import.");
+  }
+  await runCommand("cast", [
+    "wallet",
+    "import",
+    "--keystore-dir",
+    KEYSTORE_DIR,
+    "--unsafe-password",
+    process.env.ARCAD_WALLET_PASSWORD,
+    "--private-key",
+    privateKey,
+    name,
+  ]);
+}
+
+function loadActivePrivateKey() {
+  const name = requireActiveWalletName();
+  return loadPrivateKeyForAccount(name);
+}
+
+function loadPrivateKeyForAccount(name: string) {
+  if (!process.env.ARCAD_WALLET_PASSWORD) {
+    throw new Error("ARCAD_WALLET_PASSWORD is required to decrypt the active wallet.");
+  }
+  const output = runCommandSync("cast", [
+    "wallet",
+    "decrypt-keystore",
+    "--keystore-dir",
+    KEYSTORE_DIR,
+    "--unsafe-password",
+    process.env.ARCAD_WALLET_PASSWORD,
+    name,
+  ]);
+  const match = output.match(/0x[0-9a-fA-F]{64}/);
+  if (!match) throw new Error(`Could not decrypt wallet ${name}`);
+  return match[0] as `0x${string}`;
+}
+
+function addressForAccount(name: string) {
+  return privateKeyToAccount(loadPrivateKeyForAccount(name)).address;
+}
+
+function listWallets() {
+  ensureArcadHome();
+  const output = runCommandSync("cast", ["wallet", "list", "--dir", KEYSTORE_DIR], { allowFailure: true });
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function walletExists(name: string) {
+  return listWallets().some((line) => line === name || line.startsWith(`${name} `));
+}
+
+function getActiveWalletName() {
+  try {
+    return readFileSync(ACTIVE_WALLET_FILE, "utf8").trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function requireActiveWalletName() {
+  const name = getActiveWalletName();
+  if (!name) {
+    throw new Error("No active Arcad wallet. Run `arcad wallet new bidder` or `arcad wallet use <name>`.");
+  }
+  return name;
+}
+
+function setActiveWallet(name: string) {
+  ensureArcadHome();
+  writeFileSync(ACTIVE_WALLET_FILE, `${name}\n`, { mode: 0o600 });
+}
+
+function ensureArcadHome() {
+  mkdirSync(dirname(ACTIVE_WALLET_FILE), { recursive: true, mode: 0o700 });
+  mkdirSync(KEYSTORE_DIR, { recursive: true, mode: 0o700 });
+}
+
 async function openUrl(url: string) {
   const command =
     process.platform === "darwin"
@@ -555,6 +685,31 @@ async function runQuiet(command: string, args: string[]) {
       resolve(true);
     });
   });
+}
+
+async function runCommand(command: string, args: string[]) {
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] }) as any;
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
+    child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+    child.on("error", reject);
+    child.on("close", (code: number) => {
+      if (code === 0) resolve(stdout);
+      else reject(new Error(stderr.trim() || `${command} exited with ${code}`));
+    });
+  });
+}
+
+function runCommandSync(command: string, args: string[], options: { allowFailure?: boolean } = {}) {
+  const proc = Bun.spawnSync([command, ...args], { stdout: "pipe", stderr: "pipe" });
+  const stdout = new TextDecoder().decode(proc.stdout);
+  const stderr = new TextDecoder().decode(proc.stderr);
+  if (proc.exitCode !== 0 && !options.allowFailure) {
+    throw new Error(stderr.trim() || `${command} exited with ${proc.exitCode}`);
+  }
+  return stdout;
 }
 
 function decodePaymentRequired(value: string) {

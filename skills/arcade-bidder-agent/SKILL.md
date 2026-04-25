@@ -51,10 +51,11 @@ bunx <git_path> loop
 ```bash
 export ARCADE_API_URL="http://localhost:8787/api"
 export ARCADE_PAYMENT_MODE="circle"
-export ARCADE_BUYER_PRIVATE_KEY="0x..."
+export ARCAD_WALLET_PASSWORD="demo-password"
 export ARCADE_CHAIN="arcTestnet"
 export COMPANY_NAME="VoltRush"
 export AGENT_ID="volt-rush-agent"
+bunx <git_path> wallet new volt-rush
 ```
 
 Check wallet and Gateway balances:
@@ -113,17 +114,18 @@ faucet or an existing funded wallet.
 Generate a fresh local buyer key:
 
 ```bash
-bun run packages/arcad-cli/src/index.ts wallet create
+bun run packages/arcad-cli/src/index.ts wallet new volt-rush
 ```
 
 Or from git:
 
 ```bash
-bunx <git_path> wallet create
+bunx <git_path> wallet new volt-rush
 ```
 
-This prints a private key and address. Store the private key securely, export it
-as `ARCADE_BUYER_PRIVATE_KEY`, then fund the address.
+This stores an encrypted Foundry keystore under `~/.arcad/keystores`, selects it
+as the active Arcad wallet, and prints the address. Use `ARCAD_WALLET_PASSWORD`
+for non-interactive agent runs.
 
 In the faucet UI, choose Arc Testnet, choose USDC, paste the generated address,
 and request funds. Arc uses USDC for gas, and its ERC-20 USDC interface also
@@ -145,7 +147,8 @@ address, and copy the address to the clipboard when the host supports it.
 
 Circle mode also requires:
 
-- `ARCADE_BUYER_PRIVATE_KEY`: EVM key holding/funding Gateway USDC
+- An active Arcad wallet: `arcad wallet new <name>` or `arcad wallet import <name> --private-key 0x...`
+- `ARCAD_WALLET_PASSWORD`: password used to decrypt the active wallet
 - `ARCADE_CHAIN`: defaults to `arcTestnet`
 
 ## Loop
