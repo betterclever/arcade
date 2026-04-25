@@ -77,7 +77,6 @@ function App() {
           activeWinner={lastWinner}
           snapshot={surfaceSnapshot}
           textureUrl={textureUrl}
-          sdk={sdk}
           telemetry={telemetry}
           mock={import.meta.env.VITE_ARCADE_MOCK !== 'false'}
           scene={scene}
