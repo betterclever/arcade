@@ -34,6 +34,7 @@ export default function Car({ onTelemetry }: CarProps) {
   const lookTarget = useRef(new THREE.Vector3())
   const cameraVelocity = useRef(new THREE.Vector3())
   const telemetryClock = useRef(0)
+  const initialized = useRef(false)
   const { camera } = useThree()
 
   useEffect(() => {
@@ -98,8 +99,8 @@ export default function Car({ onTelemetry }: CarProps) {
       if (index < 2) wheel.rotation.y = -steering.current * 0.28
     })
 
-    const chaseDistance = THREE.MathUtils.mapLinear(speed.current, 10, 86, 12, 19)
-    const chaseHeight = THREE.MathUtils.mapLinear(speed.current, 10, 86, 4.7, 6.3)
+    const chaseDistance = THREE.MathUtils.mapLinear(speed.current, 10, 86, 10.5, 16)
+    const chaseHeight = THREE.MathUtils.mapLinear(speed.current, 10, 86, 6.2, 8.6)
     const sideDrift = -steering.current * 1.8
     const cameraTarget = carPos
       .clone()
@@ -107,15 +108,23 @@ export default function Car({ onTelemetry }: CarProps) {
       .add(frame.normal.clone().multiplyScalar(chaseHeight))
       .add(frame.right.clone().multiplyScalar(sideDrift))
 
-    cameraVelocity.current.lerp(cameraTarget.sub(camera.position).multiplyScalar(0.12), 0.1)
-    camera.position.add(cameraVelocity.current)
-
     const lookAhead = frame.point
       .clone()
       .add(frame.tangent.clone().multiplyScalar(54 + speed.current * 0.42))
-      .add(frame.normal.clone().multiplyScalar(1.4))
+      .add(frame.normal.clone().multiplyScalar(1.15))
       .add(frame.right.clone().multiplyScalar(lateralOffset.current * 0.22))
-    lookTarget.current.lerp(lookAhead, 0.12)
+
+    if (!initialized.current) {
+      initialized.current = true
+      group.current.position.copy(carPos)
+      group.current.quaternion.copy(targetQuat)
+      camera.position.copy(cameraTarget)
+      lookTarget.current.copy(lookAhead)
+    } else {
+      cameraVelocity.current.lerp(cameraTarget.clone().sub(camera.position).multiplyScalar(0.12), 0.1)
+      camera.position.add(cameraVelocity.current)
+      lookTarget.current.lerp(lookAhead, 0.12)
+    }
     camera.lookAt(lookTarget.current)
 
     telemetryClock.current += dt
@@ -129,15 +138,15 @@ export default function Car({ onTelemetry }: CarProps) {
 
   return (
     <group ref={group}>
-      <mesh castShadow receiveShadow position={[0, 0.6, 0]}>
+      <mesh position={[0, 0.6, 0]}>
         <boxGeometry args={[2.18, 0.7, 4.25]} />
         <meshStandardMaterial color="#e34d3e" roughness={0.36} metalness={0.28} />
       </mesh>
-      <mesh castShadow position={[0, 1.06, -0.35]}>
+      <mesh position={[0, 1.06, -0.35]}>
         <boxGeometry args={[1.58, 0.55, 2.05]} />
         <meshStandardMaterial color="#202a2e" roughness={0.18} metalness={0.45} />
       </mesh>
-      <mesh castShadow position={[0, 0.98, 1.32]}>
+      <mesh position={[0, 0.98, 1.32]}>
         <boxGeometry args={[1.92, 0.36, 0.88]} />
         <meshStandardMaterial color="#f16a48" roughness={0.32} metalness={0.18} />
       </mesh>
@@ -154,7 +163,7 @@ export default function Car({ onTelemetry }: CarProps) {
         <group key={index} ref={(node) => {
           if (node) wheels.current[index] = node
         }} position={position as [number, number, number]} rotation={[0, 0, Math.PI / 2]}>
-          <mesh castShadow>
+          <mesh>
             <cylinderGeometry args={[0.43, 0.43, 0.36, 20]} />
             <meshStandardMaterial color="#1e2325" roughness={0.8} />
           </mesh>

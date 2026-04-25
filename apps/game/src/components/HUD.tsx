@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react'
 import { ArcadeSDK, Bid } from '@arcade/sdk'
 import { DrivingTelemetry } from './Car'
 import { DriveInputKey, setDriveInput } from '../utils/input'
+import { SceneId } from './RoadAndEnvironment'
 
 interface HUDProps {
   bids: Bid[]
   sdk: ArcadeSDK
   telemetry: DrivingTelemetry
   mock: boolean
+  scene: SceneId
+  onSceneChange: (scene: SceneId) => void
 }
 
 function money(value?: number) {
@@ -29,7 +32,9 @@ function ControlButton({ label, inputKey }: { label: string, inputKey: DriveInpu
   )
 }
 
-export default function HUD({ bids, sdk, telemetry, mock }: HUDProps) {
+const sceneOptions: SceneId[] = ['meadow', 'alpine', 'desert', 'dusk']
+
+export default function HUD({ bids, sdk, telemetry, mock, scene, onSceneChange }: HUDProps) {
   const currentWinner = bids[0]
   const [status, setStatus] = useState('ready')
   const [error, setError] = useState<string | null>(null)
@@ -93,6 +98,18 @@ export default function HUD({ bids, sdk, telemetry, mock }: HUDProps) {
             <span>Mode</span>
             <strong>{mock ? 'mock' : 'live api'}</strong>
           </div>
+        </div>
+        <div className="scene-tabs" aria-label="Scene">
+          {sceneOptions.map((option) => (
+            <button
+              key={option}
+              className={option === scene ? 'scene-tab active' : 'scene-tab'}
+              onClick={() => onSceneChange(option)}
+              type="button"
+            >
+              {option}
+            </button>
+          ))}
         </div>
       </section>
 

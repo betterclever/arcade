@@ -12,10 +12,10 @@ export function wrapDistance(distance: number) {
 export function getRoadPoint(distance: number) {
   const d = wrapDistance(distance)
   const t = d / roadLength
-  const sweep = Math.sin(tau * t * 1.25) * 54 + Math.sin(tau * t * 3.2 + 0.8) * 18
-  const crest = Math.sin(tau * t * 2.1 + 0.35) * 6 + Math.sin(tau * t * 5.7) * 2.2
+  const sweep = Math.sin(tau * t * 1.15) * 42 + Math.sin(tau * t * 2.8 + 0.8) * 16
+  const crest = Math.sin(tau * t * 2.0 + 0.35) * 3.8 + Math.sin(tau * t * 5.2) * 1.4
 
-  return new THREE.Vector3(sweep, 8 + crest, -d)
+  return new THREE.Vector3(sweep, 2.8 + crest, -d)
 }
 
 export function getRoadFrame(distance: number) {
