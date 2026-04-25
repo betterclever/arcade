@@ -138,21 +138,49 @@ export default function Car({ onTelemetry }: CarProps) {
 
   return (
     <group ref={group}>
-      <mesh position={[0, 0.6, 0]}>
-        <boxGeometry args={[2.18, 0.7, 4.25]} />
-        <meshStandardMaterial color="#e34d3e" roughness={0.36} metalness={0.28} />
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3.2, 5.4]} />
+        <meshBasicMaterial color="#102022" transparent opacity={0.22} depthWrite={false} />
       </mesh>
-      <mesh position={[0, 1.06, -0.35]}>
-        <boxGeometry args={[1.58, 0.55, 2.05]} />
-        <meshStandardMaterial color="#202a2e" roughness={0.18} metalness={0.45} />
+      <mesh position={[0, 0.56, 0.1]}>
+        <boxGeometry args={[2.22, 0.62, 4.1]} />
+        <meshPhysicalMaterial color="#d94932" roughness={0.42} metalness={0.12} clearcoat={0.75} clearcoatRoughness={0.28} />
       </mesh>
-      <mesh position={[0, 0.98, 1.32]}>
-        <boxGeometry args={[1.92, 0.36, 0.88]} />
-        <meshStandardMaterial color="#f16a48" roughness={0.32} metalness={0.18} />
+      <mesh position={[0, 0.83, -1.15]}>
+        <boxGeometry args={[1.78, 0.36, 1.1]} />
+        <meshPhysicalMaterial color="#e65b3d" roughness={0.34} metalness={0.1} clearcoat={0.8} clearcoatRoughness={0.2} />
       </mesh>
-      <mesh position={[0, 1.22, -1.06]}>
-        <boxGeometry args={[1.34, 0.1, 0.78]} />
-        <meshStandardMaterial color="#8fb4bd" roughness={0.06} metalness={0.05} transparent opacity={0.72} />
+      <mesh position={[0, 1.08, 0.1]}>
+        <boxGeometry args={[1.5, 0.58, 1.92]} />
+        <meshPhysicalMaterial color="#172b35" roughness={0.18} metalness={0.15} clearcoat={0.5} clearcoatRoughness={0.1} />
+      </mesh>
+      <mesh position={[0, 1.27, -0.78]} rotation={[0.18, 0, 0]}>
+        <boxGeometry args={[1.28, 0.08, 0.72]} />
+        <meshPhysicalMaterial color="#8fb7c0" roughness={0.04} metalness={0.02} transparent opacity={0.74} />
+      </mesh>
+      <mesh position={[0, 1.2, 0.98]} rotation={[-0.14, 0, 0]}>
+        <boxGeometry args={[1.22, 0.08, 0.56]} />
+        <meshPhysicalMaterial color="#2f4c57" roughness={0.08} metalness={0.02} transparent opacity={0.68} />
+      </mesh>
+      <mesh position={[0, 0.88, 1.72]}>
+        <boxGeometry args={[1.94, 0.24, 0.35]} />
+        <meshStandardMaterial color="#f26a45" roughness={0.34} metalness={0.16} />
+      </mesh>
+      <mesh position={[-0.62, 0.58, -2.04]}>
+        <boxGeometry args={[0.42, 0.13, 0.06]} />
+        <meshBasicMaterial color="#fff0b8" />
+      </mesh>
+      <mesh position={[0.62, 0.58, -2.04]}>
+        <boxGeometry args={[0.42, 0.13, 0.06]} />
+        <meshBasicMaterial color="#fff0b8" />
+      </mesh>
+      <mesh position={[-0.72, 0.62, 2.17]}>
+        <boxGeometry args={[0.36, 0.14, 0.06]} />
+        <meshBasicMaterial color="#b8221f" />
+      </mesh>
+      <mesh position={[0.72, 0.62, 2.17]}>
+        <boxGeometry args={[0.36, 0.14, 0.06]} />
+        <meshBasicMaterial color="#b8221f" />
       </mesh>
       {[
         [-1.17, 0.18, -1.45],

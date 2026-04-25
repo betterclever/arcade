@@ -17,7 +17,7 @@ interface PlacedObject {
   rotation: [number, number, number]
   scale: number
   variant: number
-  kind: 'tree' | 'sign' | 'rock' | 'lamp'
+  kind: 'tree' | 'sign' | 'rock' | 'lamp' | 'rail-post' | 'rail-beam' | 'rumble' | 'hedge' | 'fence-post' | 'fence-rail' | 'crop-row'
 }
 
 interface InstanceBatchProps {
@@ -33,16 +33,30 @@ const scenes: Record<SceneId, {
   shoulder: string
   road: string
   line: string
+  edgeLine: string
+  rail: string
+  hedge: string
+  cropA: string
+  cropB: string
+  roadTextureA: string
+  roadTextureB: string
   treeA: string
   treeB: string
   trunk: string
   rock: string
 }> = {
   meadow: {
-    terrain: '#84a96e',
-    shoulder: '#9bb983',
-    road: '#364244',
+    terrain: '#6f9654',
+    shoulder: '#a5b98a',
+    road: '#f1f1ea',
     line: '#eee3bf',
+    edgeLine: '#f1edcf',
+    rail: '#d7d5c7',
+    hedge: '#4f7a3c',
+    cropA: '#aaba63',
+    cropB: '#c5a957',
+    roadTextureA: '#3f4a4b',
+    roadTextureB: '#6d7772',
     treeA: '#1f5634',
     treeB: '#4f7b3f',
     trunk: '#5e432c',
@@ -51,8 +65,15 @@ const scenes: Record<SceneId, {
   alpine: {
     terrain: '#6f8b74',
     shoulder: '#9dad94',
-    road: '#30393e',
+    road: '#efefe8',
     line: '#f0ead0',
+    edgeLine: '#d7d6ba',
+    rail: '#d2d7d2',
+    hedge: '#2e5342',
+    cropA: '#8ea76b',
+    cropB: '#b7b58a',
+    roadTextureA: '#3d4649',
+    roadTextureB: '#697271',
     treeA: '#173f35',
     treeB: '#2e5b49',
     trunk: '#4d3d31',
@@ -61,8 +82,15 @@ const scenes: Record<SceneId, {
   desert: {
     terrain: '#c6a765',
     shoulder: '#d6bd7f',
-    road: '#3d3a35',
+    road: '#f1ece0',
     line: '#f2ddb0',
+    edgeLine: '#d8c077',
+    rail: '#c7b98c',
+    hedge: '#7b7644',
+    cropA: '#d5ba6c',
+    cropB: '#b58a52',
+    roadTextureA: '#49443c',
+    roadTextureB: '#746a56',
     treeA: '#66733c',
     treeB: '#8b8a4c',
     trunk: '#6f5538',
@@ -71,13 +99,70 @@ const scenes: Record<SceneId, {
   dusk: {
     terrain: '#6f7b58',
     shoulder: '#8a966c',
-    road: '#343d40',
+    road: '#f0ece2',
     line: '#f1d89b',
+    edgeLine: '#d6b35e',
+    rail: '#bfc5b9',
+    hedge: '#314b33',
+    cropA: '#899c5a',
+    cropB: '#ba9f63',
+    roadTextureA: '#3c4648',
+    roadTextureB: '#626b69',
     treeA: '#1d4035',
     treeB: '#405e3b',
     trunk: '#55402d',
     rock: '#81796c',
   },
+}
+
+function makeNoiseTexture(primary: string, secondary: string, size = 256, density = 2200) {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = primary
+  ctx.fillRect(0, 0, size, size)
+  ctx.globalAlpha = 0.2
+  for (let i = 0; i < density; i++) {
+    const shade = i % 3 === 0 ? secondary : '#f5f1df'
+    ctx.fillStyle = shade
+    const x = Math.random() * size
+    const y = Math.random() * size
+    const w = Math.random() * 2.6 + 0.4
+    ctx.fillRect(x, y, w, 1)
+  }
+  ctx.globalAlpha = 1
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(1, 110)
+  texture.anisotropy = 4
+  return texture
+}
+
+function makeGroundTexture(base: string, fleck: string, size = 256) {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = base
+  ctx.fillRect(0, 0, size, size)
+  ctx.globalAlpha = 0.16
+  for (let i = 0; i < 850; i++) {
+    ctx.fillStyle = i % 4 === 0 ? '#eef0c9' : fleck
+    ctx.fillRect(Math.random() * size, Math.random() * size, Math.random() * 3 + 1, Math.random() * 2 + 1)
+  }
+  ctx.globalAlpha = 1
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(16, 120)
+  texture.anisotropy = 2
+  return texture
 }
 
 function smoothstep(edge0: number, edge1: number, x: number) {
@@ -86,7 +171,7 @@ function smoothstep(edge0: number, edge1: number, x: number) {
 }
 
 function terrainHeight(x: number, z: number, scene: SceneId) {
-  const distance = THREE.MathUtils.clamp(-z, 0, roadLength)
+  const distance = THREE.MathUtils.clamp(-z, 0, roadLength - 1)
   const road = getRoadPoint(distance)
   const fromRoad = Math.abs(x - road.x)
   const hillStrength = smoothstep(roadWidth * 1.8, 260, fromRoad)
@@ -158,7 +243,7 @@ function createRoadGeometry(width: number, segments: number) {
   const indices: number[] = []
 
   for (let i = 0; i <= segments; i++) {
-    const distance = (i / segments) * roadLength
+    const distance = (i / segments) * (roadLength - 1)
     const frame = getRoadFrame(distance)
     const left = frame.point.clone().add(frame.right.clone().multiplyScalar(-width / 2)).add(frame.normal.clone().multiplyScalar(0.09))
     const right = frame.point.clone().add(frame.right.clone().multiplyScalar(width / 2)).add(frame.normal.clone().multiplyScalar(0.09))
@@ -179,15 +264,39 @@ function createRoadGeometry(width: number, segments: number) {
   return geometry
 }
 
+function createRoadLineGeometry(offset: number, width: number, segments: number) {
+  const geometry = new THREE.BufferGeometry()
+  const vertices: number[] = []
+  const indices: number[] = []
+
+  for (let i = 0; i <= segments; i++) {
+    const distance = (i / segments) * (roadLength - 1)
+    const frame = getRoadFrame(distance)
+    const left = frame.point.clone().add(frame.right.clone().multiplyScalar(offset - width / 2)).add(frame.normal.clone().multiplyScalar(0.16))
+    const right = frame.point.clone().add(frame.right.clone().multiplyScalar(offset + width / 2)).add(frame.normal.clone().multiplyScalar(0.16))
+    vertices.push(left.x, left.y, left.z, right.x, right.y, right.z)
+  }
+
+  for (let i = 0; i < segments; i++) {
+    const a = i * 2
+    indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
+  }
+
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+  return geometry
+}
+
 function createShoulderGeometry(width: number, segments: number) {
   const geometry = new THREE.BufferGeometry()
   const vertices: number[] = []
   const indices: number[] = []
 
   for (let i = 0; i <= segments; i++) {
-    const distance = (i / segments) * roadLength
+    const distance = (i / segments) * (roadLength - 1)
     const frame = getRoadFrame(distance)
-    const offsets = [-width / 2 - 4.8, -width / 2, width / 2, width / 2 + 4.8]
+    const offsets = [-width / 2 - 3.4, -width / 2, width / 2, width / 2 + 3.4]
     offsets.forEach((offset) => {
       const p = frame.point.clone().add(frame.right.clone().multiplyScalar(offset)).add(frame.normal.clone().multiplyScalar(0.015))
       vertices.push(p.x, p.y, p.z)
@@ -262,13 +371,138 @@ function createLaneMarkers(count: number): PlacedObject[] {
   })
 }
 
+function createRumbleStrips(count: number): PlacedObject[] {
+  return Array.from({ length: count * 2 }, (_, index) => {
+    const pairIndex = Math.floor(index / 2)
+    const side = index % 2 === 0 ? -1 : 1
+    const distance = 24 + pairIndex * 34
+    const frame = getRoadFrame(distance)
+      const position = frame.point
+      .clone()
+      .add(frame.right.clone().multiplyScalar(side * (roadWidth / 2 + 0.46)))
+      .add(frame.normal.clone().multiplyScalar(0.18))
+    const euler = frameRotationFromTangent(frame.tangent)
+
+    return {
+      position: [position.x, position.y, position.z],
+      rotation: [euler.x, euler.y, euler.z],
+      scale: 1,
+      variant: 0,
+      kind: 'rumble',
+    }
+  })
+}
+
+function createHedges(scene: SceneId): PlacedObject[] {
+  const items: PlacedObject[] = []
+  for (let index = 0; index < 92; index++) {
+    const distance = 70 + index * 56
+    const frame = getRoadFrame(distance)
+    const euler = frameRotationFromTangent(frame.tangent)
+    for (const side of [-1, 1]) {
+      if ((index + side) % 5 === 0) continue
+      const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * (roadWidth / 2 + 5.8)))
+      base.y = terrainHeight(base.x, base.z, scene) + 0.62
+      items.push({
+        position: [base.x, base.y, base.z],
+        rotation: [0, euler.y, 0],
+        scale: 0.8 + ((index * 7) % 5) * 0.08,
+        variant: index % 2,
+        kind: 'hedge',
+      })
+    }
+  }
+  return items
+}
+
+function createFences(scene: SceneId): PlacedObject[] {
+  const items: PlacedObject[] = []
+  for (let index = 0; index < 68; index++) {
+    const distance = 120 + index * 74
+    const frame = getRoadFrame(distance)
+    const euler = frameRotationFromTangent(frame.tangent)
+    for (const side of [-1, 1]) {
+      if ((index + (side > 0 ? 2 : 0)) % 4 === 0) continue
+      const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * (roadWidth / 2 + 10.5)))
+      base.y = terrainHeight(base.x, base.z, scene) + 0.5
+      items.push({
+        position: [base.x, base.y, base.z],
+        rotation: [0, euler.y, 0],
+        scale: 1,
+        variant: 0,
+        kind: 'fence-post',
+      })
+      items.push({
+        position: [base.x, base.y + 0.55, base.z],
+        rotation: [0, euler.y, 0],
+        scale: 1,
+        variant: 0,
+        kind: 'fence-rail',
+      })
+    }
+  }
+  return items
+}
+
+function createCropRows(scene: SceneId): PlacedObject[] {
+  const items: PlacedObject[] = []
+  for (let index = 0; index < 162; index++) {
+    const distance = 90 + index * 30
+    const frame = getRoadFrame(distance)
+    const euler = frameRotationFromTangent(frame.tangent)
+    for (const side of [-1, 1]) {
+      if (index % 3 === 0 && side < 0) continue
+      const lane = 26 + ((index * 13) % 90)
+      const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * lane))
+      base.y = terrainHeight(base.x, base.z, scene) + 0.08
+      items.push({
+        position: [base.x, base.y, base.z],
+        rotation: [0, euler.y + (side > 0 ? 0.08 : -0.08), 0],
+        scale: 0.7 + ((index * 5) % 6) * 0.05,
+        variant: index % 2,
+        kind: 'crop-row',
+      })
+    }
+  }
+  return items
+}
+
+function createGuardrails(scene: SceneId): PlacedObject[] {
+  const items: PlacedObject[] = []
+  for (let index = 0; index < 58; index++) {
+    const distance = 220 + index * 82
+    const frame = getRoadFrame(distance)
+    const curveBias = Math.abs(frame.tangent.x)
+    if (curveBias < 0.05 && index % 3 !== 0) continue
+    const side = index % 2 === 0 ? 1 : -1
+    const euler = frameRotationFromTangent(frame.tangent)
+    const base = frame.point.clone().add(frame.right.clone().multiplyScalar(side * (roadWidth / 2 + 3.5)))
+    base.y = terrainHeight(base.x, base.z, scene) + 0.45
+    items.push({
+      position: [base.x, base.y, base.z],
+      rotation: [0, euler.y, 0],
+      scale: 1,
+      variant: 0,
+      kind: 'rail-post',
+    })
+    items.push({
+      position: [base.x, base.y + 0.74, base.z],
+      rotation: [0, euler.y, 0],
+      scale: 1,
+      variant: 0,
+      kind: 'rail-beam',
+    })
+  }
+  return items
+}
+
 function createBillboards(scene: SceneId) {
   return Array.from({ length: 18 }, (_, index) => {
     const distance = 245 + index * 285
     const frame = getRoadFrame(distance)
     const rightSide = index % 2 === 0
     const side = rightSide ? 1 : -1
-    const offset = side * (roadWidth * 1.2 + 6.5 + (index % 3) * 1.8)
+    const offset = side * (roadWidth * 1.25 + 6 + (index % 3) * 1.6)
     const base = frame.point.clone().add(frame.right.clone().multiplyScalar(offset))
     base.y = terrainHeight(base.x, base.z, scene) + 0.18
 
@@ -342,19 +576,39 @@ export default function RoadAndEnvironment({ textureUrl, winner, scene }: RoadAn
   const theme = scenes[scene]
   const adTexture = useAdTexture(textureUrl, winner)
   const roadGeometry = useMemo(() => createRoadGeometry(roadWidth, 420), [])
+  const leftEdgeGeometry = useMemo(() => createRoadLineGeometry(-roadWidth / 2 + 0.32, 0.13, 420), [])
+  const rightEdgeGeometry = useMemo(() => createRoadLineGeometry(roadWidth / 2 - 0.32, 0.13, 420), [])
   const shoulderGeometry = useMemo(() => createShoulderGeometry(roadWidth, 420), [])
   const terrainGeometry = useMemo(() => createTerrainGeometry(scene), [scene])
   const markers = useMemo(() => createLaneMarkers(96), [])
+  const rumbleStrips = useMemo(() => createRumbleStrips(138), [])
+  const guardrails = useMemo(() => createGuardrails(scene), [scene])
+  const hedges = useMemo(() => createHedges(scene), [scene])
+  const fences = useMemo(() => createFences(scene), [scene])
+  const cropRows = useMemo(() => createCropRows(scene), [scene])
   const billboards = useMemo(() => createBillboards(scene), [scene])
-  const props = useMemo(() => createProps(118, scene), [scene])
+  const props = useMemo(() => createProps(98, scene), [scene])
 
   const treeProps = useMemo(() => props.filter((prop) => prop.kind === 'tree'), [props])
   const signProps = useMemo(() => props.filter((prop) => prop.kind === 'sign'), [props])
   const rockProps = useMemo(() => props.filter((prop) => prop.kind === 'rock'), [props])
   const lampProps = useMemo(() => props.filter((prop) => prop.kind === 'lamp'), [props])
+  const railPosts = useMemo(() => guardrails.filter((prop) => prop.kind === 'rail-post'), [guardrails])
+  const railBeams = useMemo(() => guardrails.filter((prop) => prop.kind === 'rail-beam'), [guardrails])
+  const fencePosts = useMemo(() => fences.filter((prop) => prop.kind === 'fence-post'), [fences])
+  const fenceRails = useMemo(() => fences.filter((prop) => prop.kind === 'fence-rail'), [fences])
+  const cropRowsA = useMemo(() => cropRows.filter((prop) => prop.variant === 0), [cropRows])
+  const cropRowsB = useMemo(() => cropRows.filter((prop) => prop.variant === 1), [cropRows])
 
   const geometries = useMemo(() => ({
     marker: new THREE.BoxGeometry(0.24, 0.035, 6.4),
+    rumble: new THREE.BoxGeometry(0.86, 0.035, 0.28),
+    hedge: new THREE.DodecahedronGeometry(1, 0),
+    fencePost: new THREE.BoxGeometry(0.14, 1.1, 0.14),
+    fenceRail: new THREE.BoxGeometry(0.11, 0.12, 7.4),
+    cropRow: new THREE.BoxGeometry(0.36, 0.08, 11.5),
+    railPost: new THREE.BoxGeometry(0.16, 1.1, 0.16),
+    railBeam: new THREE.BoxGeometry(0.18, 0.28, 10.5),
     trunk: new THREE.CylinderGeometry(0.16, 0.25, 2.7, 6),
     treeCrown: new THREE.ConeGeometry(1.05, 2.65, 7),
     treeTop: new THREE.ConeGeometry(0.78, 1.9, 7),
@@ -365,26 +619,48 @@ export default function RoadAndEnvironment({ textureUrl, winner, scene }: RoadAn
     lampArm: new THREE.BoxGeometry(0.85, 0.16, 0.24),
   }), [])
 
+  const textures = useMemo(() => ({
+    road: makeNoiseTexture(theme.roadTextureA, theme.roadTextureB),
+    ground: makeGroundTexture(theme.terrain, theme.shoulder),
+  }), [theme])
+
   const materials = useMemo(() => ({
     marker: new THREE.MeshBasicMaterial({ color: theme.line }),
-    terrain: new THREE.MeshLambertMaterial({ color: theme.terrain }),
+    edge: new THREE.MeshBasicMaterial({ color: theme.edgeLine }),
+    rumble: new THREE.MeshBasicMaterial({ color: '#cfc5a5' }),
+    hedge: new THREE.MeshLambertMaterial({ color: theme.hedge }),
+    fence: new THREE.MeshLambertMaterial({ color: scene === 'desert' ? '#9d7b55' : '#896a46' }),
+    cropA: new THREE.MeshLambertMaterial({ color: theme.cropA }),
+    cropB: new THREE.MeshLambertMaterial({ color: theme.cropB }),
+    terrain: new THREE.MeshLambertMaterial({ color: theme.terrain, map: textures.ground }),
     shoulder: new THREE.MeshLambertMaterial({ color: theme.shoulder }),
-    road: new THREE.MeshLambertMaterial({ color: theme.road }),
+    road: new THREE.MeshLambertMaterial({ color: theme.road, map: textures.road }),
     trunk: new THREE.MeshLambertMaterial({ color: theme.trunk }),
     treeA: new THREE.MeshLambertMaterial({ color: scene === 'desert' ? theme.treeA : theme.treeA }),
     treeB: new THREE.MeshLambertMaterial({ color: scene === 'desert' ? theme.treeB : theme.treeB }),
     rock: new THREE.MeshLambertMaterial({ color: theme.rock }),
     metal: new THREE.MeshLambertMaterial({ color: '#596166' }),
+    rail: new THREE.MeshLambertMaterial({ color: theme.rail }),
     sign: new THREE.MeshLambertMaterial({ color: theme.line }),
-  }), [scene, theme])
+  }), [scene, theme, textures])
 
   return (
     <group>
-      <mesh geometry={terrainGeometry} material={materials.terrain} />
-      <mesh geometry={shoulderGeometry} material={materials.shoulder} />
-      <mesh geometry={roadGeometry} material={materials.road} />
+      <mesh geometry={terrainGeometry} material={materials.terrain} matrixAutoUpdate={false} />
+      <mesh geometry={shoulderGeometry} material={materials.shoulder} matrixAutoUpdate={false} />
+      <mesh geometry={roadGeometry} material={materials.road} matrixAutoUpdate={false} />
+      <mesh geometry={leftEdgeGeometry} material={materials.edge} matrixAutoUpdate={false} />
+      <mesh geometry={rightEdgeGeometry} material={materials.edge} matrixAutoUpdate={false} />
 
       <InstanceBatch items={markers} geometry={geometries.marker} material={materials.marker} />
+      <InstanceBatch items={rumbleStrips} geometry={geometries.rumble} material={materials.rumble} />
+      <InstanceBatch items={railPosts} geometry={geometries.railPost} material={materials.rail} />
+      <InstanceBatch items={railBeams} geometry={geometries.railBeam} material={materials.rail} />
+      <InstanceBatch items={hedges} geometry={geometries.hedge} material={materials.hedge} localScale={[1.55, 0.46, 1.25]} />
+      <InstanceBatch items={fencePosts} geometry={geometries.fencePost} material={materials.fence} />
+      <InstanceBatch items={fenceRails} geometry={geometries.fenceRail} material={materials.fence} />
+      <InstanceBatch items={cropRowsA} geometry={geometries.cropRow} material={materials.cropA} />
+      <InstanceBatch items={cropRowsB} geometry={geometries.cropRow} material={materials.cropB} />
 
       {billboards.map((billboard, index) => (
         <Billboard
