@@ -36,6 +36,8 @@ bunx <git_path> loop
 Inspect live auction state:
 
 ```bash
+bunx <git_path> games
+bunx <git_path> campaigns
 bunx <git_path> status
 bunx <git_path> bids
 bunx <git_path> bid-detail <bidId>

@@ -18,6 +18,52 @@ export function mountSurfaceRoutes(router: Router) {
     });
   });
 
+  router.get("/games", (_req, res) => {
+    const games = [...store.surfaces.values()].reduce<Array<{
+      id: string;
+      title: string;
+      surfaces: Array<{ id: string; title: string; currentRoundId: string; minBidUsd: number; maxBidUsd: number }>;
+    }>>((acc, surface) => {
+      const id = slugify(surface.game);
+      let game = acc.find((entry) => entry.id === id);
+      if (!game) {
+        game = { id, title: surface.game, surfaces: [] };
+        acc.push(game);
+      }
+      game.surfaces.push({
+        id: surface.id,
+        title: surface.title,
+        currentRoundId: surface.currentRoundId,
+        minBidUsd: surface.minBidUsd,
+        maxBidUsd: surface.maxBidUsd,
+      });
+      return acc;
+    }, []);
+    res.json({ games });
+  });
+
+  router.get("/campaigns", (_req, res) => {
+    const campaigns = [...store.surfaces.values()].map((surface) => {
+      const snapshot = store.getSurfaceSnapshot(surface.id);
+      const leadingBid = snapshot.bids[0] ?? null;
+      return {
+        id: `${surface.id}:${snapshot.round?.id ?? "no-round"}`,
+        game: surface.game,
+        surface,
+        round: snapshot.round,
+        status: snapshot.round?.status ?? "unknown",
+        startsAt: snapshot.round?.startsAt,
+        endsAt: snapshot.round?.endsAt,
+        minBidUsd: surface.minBidUsd,
+        maxBidUsd: surface.maxBidUsd,
+        leadingBid,
+        bidCount: snapshot.bids.length,
+        lastWinner: snapshot.lastWinner ?? null,
+      };
+    });
+    res.json({ campaigns });
+  });
+
   router.post("/surfaces", (req, res, next) => {
     try {
       const input = createSurfaceSchema.parse(req.body);
@@ -63,4 +109,8 @@ export function mountSurfaceRoutes(router: Router) {
     if (!payment) return res.status(404).json({ error: "Payment not found" });
     res.json({ payment });
   });
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }

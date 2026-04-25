@@ -67,6 +67,16 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
 
+  if (command === "games") {
+    await printGames(parseConfig(args));
+    return;
+  }
+
+  if (command === "campaigns" || command === "ads") {
+    await printCampaigns(parseConfig(args));
+    return;
+  }
+
   if (command === "bids") {
     await printBids(parseConfig(args), args);
     return;
@@ -156,6 +166,8 @@ Usage:
   arcad wallet balances
   arcad wallet deposit <amount>
   arcad faucet [--address 0x...] [--no-open]
+  arcad games
+  arcad campaigns
   arcad status
   arcad bids
   arcad rounds
@@ -323,6 +335,14 @@ Circle Faucet:
 async function printSurface(config: AgentConfig, argv: string[]) {
   const surfaceId = readFlag(argv, "surface", config.surfaceId);
   printJson(await getJson(config, `/surfaces/${surfaceId}`));
+}
+
+async function printGames(config: AgentConfig) {
+  printJson(await getJson(config, "/games"));
+}
+
+async function printCampaigns(config: AgentConfig) {
+  printJson(await getJson(config, "/campaigns"));
 }
 
 async function printBids(config: AgentConfig, argv: string[]) {

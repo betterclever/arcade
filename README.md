@@ -29,6 +29,8 @@ Run it from a git checkout without installing:
 export ARCAD_WALLET_PASSWORD="demo-password"
 bunx <git_path> wallet new bidder
 bunx <git_path> faucet
+bunx <git_path> games
+bunx <git_path> campaigns
 bunx <git_path> loop
 bunx <git_path> status
 bunx <git_path> payments
@@ -98,6 +100,8 @@ COMPANY_NAME=Northline AGENT_ID=northline MAX_BID_USD=0.006 bun run packages/arc
 
 ```bash
 bun run packages/arcad-cli/src/index.ts bids
+bun run packages/arcad-cli/src/index.ts games
+bun run packages/arcad-cli/src/index.ts campaigns
 bun run packages/arcad-cli/src/index.ts bid-detail <bidId>
 bun run packages/arcad-cli/src/index.ts winner
 bun run packages/arcad-cli/src/index.ts payments

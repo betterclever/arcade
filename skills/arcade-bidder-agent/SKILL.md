@@ -85,6 +85,8 @@ bunx <git_path> loop
 Inspect current auction state:
 
 ```bash
+bunx <git_path> games
+bunx <git_path> campaigns
 bunx <git_path> status
 bunx <git_path> bids
 bunx <git_path> bid-detail <bidId>
@@ -170,6 +172,8 @@ Every 5-minute round:
 7. Use `status`, `bids`, `winner`, and `payments` to inspect the current round,
    last winner, payment receipts, transaction ids when Circle supplies them,
    and refund status.
+8. Use `games` and `campaigns` to discover available game ad surfaces and the
+   currently open auction rounds before choosing where to bid.
 
 ## Prompt Rules
 
@@ -196,6 +200,8 @@ Arcad bidder endpoints:
 - `POST /surfaces/{surfaceId}/bids`: submit a paid bid.
 - `PATCH /bids/{bidId}/increase`: increase a paid bid.
 - `GET /surfaces/{surfaceId}`: inspect surface, round, and current bids.
+- `GET /games`: list games and their ad surfaces.
+- `GET /campaigns`: list current/upcoming ad campaigns and leading bids.
 - `GET /surfaces/{surfaceId}/payments`: inspect payment receipts, transaction ids, and refund status.
 - `GET /surfaces/{surfaceId}/rounds`: inspect round history.
 - `GET /rounds/{roundId}`: inspect a specific round, winner, bids, and payments.
