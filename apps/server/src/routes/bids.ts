@@ -63,7 +63,19 @@ export async function mountBidRoutes(router: Router) {
     }
   });
 
-  router.patch("/bids/:bidId/increase", increasePayment, (req, res, next) => {
+  router.patch(
+    "/bids/:bidId/increase",
+    (req, res, next) => {
+      try {
+        const status = store.getBidIncreaseStatus(String(req.params.bidId));
+        if (!status.ok) return res.status(status.status).json({ error: status.error });
+        next();
+      } catch (error) {
+        next(error);
+      }
+    },
+    increasePayment,
+    (req, res, next) => {
     try {
       const input = increaseSchema.parse(req.body);
       const bid = store.increaseBid(String(req.params.bidId), input.deltaUsd, receiptFromRequest(req, input.deltaUsd));
@@ -71,7 +83,8 @@ export async function mountBidRoutes(router: Router) {
     } catch (error) {
       next(error);
     }
-  });
+    },
+  );
 
   router.post("/surfaces/:surfaceId/close-round", async (req, res, next) => {
     try {

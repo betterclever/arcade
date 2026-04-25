@@ -314,6 +314,19 @@ class AuctionStore {
     return bid;
   }
 
+  getBidIncreaseStatus(bidId: string) {
+    const bid = this.bids.get(bidId);
+    if (!bid) {
+      return { ok: false, status: 404, error: "Bid not found" };
+    }
+    const surface = this.requireSurface(bid.surfaceId);
+    const round = this.rounds.get(bid.roundId);
+    if (!round || round.status !== "open" || surface.currentRoundId !== round.id) {
+      return { ok: false, status: 409, error: "Bid can only be increased while its round is open" };
+    }
+    return { ok: true, status: 200, bid };
+  }
+
   closeRound(surfaceId: string) {
     const surface = this.requireSurface(surfaceId);
     const round = this.rounds.get(surface.currentRoundId);
@@ -344,6 +357,15 @@ class AuctionStore {
 
     for (const payment of roundPayments) {
       const bid = this.bids.get(payment.bidId);
+      if (payment.settlementStatus === "settled") {
+        settled.push(payment);
+        continue;
+      }
+      if (payment.settlementStatus === "released") {
+        released.push(payment);
+        continue;
+      }
+
       if (payment.bidId !== winningBidId) {
         payment.settlementStatus = "released";
         payment.refundStatus = "released";
