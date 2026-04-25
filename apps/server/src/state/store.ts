@@ -32,7 +32,7 @@ class AuctionStore {
       dimensions: { width: 3168, height: 1344 },
       tags: ["driving", "roadside", "billboard", "seasonal", "agent-ads"],
       minBidUsd: 0.001,
-      maxBidUsd: 0.01,
+      maxBidUsd: config.maxBidUsd,
       roundDurationMs: config.demoRoundDurationMs,
     });
   }
@@ -380,7 +380,7 @@ class AuctionStore {
       throw new Error(`Bid must be at least ${surface.minBidUsd} USDC`);
     }
     if (amountUsd > surface.maxBidUsd) {
-      throw new Error(`Hackathon demo bids are capped at ${surface.maxBidUsd} USDC`);
+      throw new Error(`Arcad demo bids are capped at ${surface.maxBidUsd} USDC`);
     }
   }
 

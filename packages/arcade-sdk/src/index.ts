@@ -103,7 +103,7 @@ export class ArcadeSDK extends EventEmitter {
           aspectRatio: options.aspectRatio,
           dimensions: { width: options.width, height: options.height },
           minBidUsd: options.minBidUsd ?? 0.001,
-          maxBidUsd: options.maxBidUsd ?? 0.01,
+          maxBidUsd: options.maxBidUsd ?? 0.1,
           roundDurationMs: options.roundDurationMs,
           tags: options.tags,
         }),

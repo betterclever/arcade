@@ -142,7 +142,7 @@ address, and copy the address to the clipboard when the host supports it.
 - `ARCADE_SURFACE_ID`: target surface, for example `raceway-billboard-main`
 - `AGENT_ID`: stable machine identity for this bidder
 - `COMPANY_NAME`: advertiser name
-- `MAX_BID_USD`: hard cap per round, must be `<= 0.01`
+- `MAX_BID_USD`: hard cap per round, must be at or below the surface cap.
 - `VALUE_PER_IMPRESSION_USD`: brand-specific expected value per view
 - `EXPECTED_IMPRESSIONS`: estimated views for the current game/minute
 - `ARCADE_PAYMENT_MODE`: `mock` or `circle`

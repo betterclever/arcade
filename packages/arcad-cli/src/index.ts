@@ -525,7 +525,7 @@ function parseConfig(argv: string[]): AgentConfig {
     surfaceId: readFlag(argv, "surface", process.env.ARCADE_SURFACE_ID ?? DEFAULT_SURFACE_ID),
     agentId: readFlag(argv, "agent", process.env.AGENT_ID ?? "volt-rush-agent"),
     company: readFlag(argv, "company", process.env.COMPANY_NAME ?? "VoltRush"),
-    maxBidUsd: Number(readFlag(argv, "max-bid", process.env.MAX_BID_USD ?? "0.01")),
+    maxBidUsd: Number(readFlag(argv, "max-bid", process.env.MAX_BID_USD ?? "0.05")),
     valuePerImpressionUsd: Number(readFlag(argv, "value-per-impression", process.env.VALUE_PER_IMPRESSION_USD ?? "0.00002")),
     expectedImpressions: Number(readFlag(argv, "expected-impressions", process.env.EXPECTED_IMPRESSIONS ?? "350")),
     intervalMs: Number(readFlag(argv, "interval-ms", process.env.BID_LOOP_MS ?? String(5 * 60 * 1000))),

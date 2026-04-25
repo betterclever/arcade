@@ -2,18 +2,19 @@ import type { Router } from "express";
 import { z } from "zod";
 import { generateBillboardTexture } from "../adapters/gemini";
 import { bidAuthorizationGuard, receiptFromRequest, settleReceipt } from "../adapters/payments";
+import { config } from "../config";
 import { store } from "../state/store";
 
 const bidSchema = z.object({
   agentId: z.string().min(2),
   company: z.string().min(2),
-  amountUsd: z.number().positive().max(0.01),
+  amountUsd: z.number().positive().max(config.maxBidUsd),
   prompt: z.string().min(10).max(600),
   rationale: z.string().max(800).default(""),
 });
 
 const increaseSchema = z.object({
-  deltaUsd: z.number().positive().max(0.01),
+  deltaUsd: z.number().positive().max(config.maxBidUsd),
 });
 
 export async function mountBidRoutes(router: Router) {

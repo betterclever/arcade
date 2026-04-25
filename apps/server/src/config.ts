@@ -14,6 +14,7 @@ export const config = {
       : undefined),
   bidEntryFeeUsd: process.env.BID_ENTRY_FEE_USD ?? "$0.001",
   bidIncreaseFeeUsd: process.env.BID_INCREASE_FEE_USD ?? "$0.001",
+  maxBidUsd: Number(process.env.MAX_BID_USD ?? process.env.MAX_SURFACE_BID_USD ?? 0.1),
   bidAuthorizationTtlMs: Number(process.env.BID_AUTHORIZATION_TTL_MS ?? 90_000),
   campaignManagerEnabled: process.env.CAMPAIGN_MANAGER_ENABLED !== "false",
   campaignManagerIntervalMs: Number(process.env.CAMPAIGN_MANAGER_INTERVAL_MS ?? 5_000),

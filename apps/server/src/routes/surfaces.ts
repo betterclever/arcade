@@ -16,7 +16,7 @@ const createSurfaceSchema = z.object({
   }).optional(),
   tags: z.array(z.string().min(1)).optional(),
   minBidUsd: z.number().positive().default(0.001),
-  maxBidUsd: z.number().positive().max(0.01).default(0.01),
+  maxBidUsd: z.number().positive().max(config.maxBidUsd).default(config.maxBidUsd),
   roundDurationMs: z.number().int().min(10_000).optional(),
 });
 

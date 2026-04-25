@@ -11,16 +11,17 @@ fi
 
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 
-tmux new-session -d -s "$SESSION" -n bidders -c "$ROOT" zsh
-tmux split-window -h -t "$SESSION:0" -c "$ROOT" zsh
-tmux split-window -v -t "$SESSION:0.1" -c "$ROOT" zsh
-tmux select-layout -t "$SESSION:0" tiled
+tmux new-session -d -s "$SESSION" -n control-room -c "$ROOT" zsh
+tmux split-window -h -p 36 -t "$SESSION:0" -c "$ROOT" zsh
+tmux split-window -v -p 66 -t "$SESSION:0.1" -c "$ROOT" zsh
+tmux split-window -v -p 50 -t "$SESSION:0.2" -c "$ROOT" zsh
 
 COMMON='source /tmp/arcad-agents.env; export ARCADE_API_URL=http://localhost:8787/api ARCADE_PAYMENT_MODE=circle ARCAD_PI_WAKE=1 ARCAD_PI_WAKE_MS=15000 ARCAD_MARKET_WATCH_MS=5000 PI_MODEL=quotio/gpt-5.4-mini QUOTIO_API_KEY=test-key'
 
-tmux send-keys -t "$SESSION:0.0" "$COMMON; export AGENT_ID=volt-rush COMPANY_NAME=VoltRush MAX_BID_USD=0.006 VALUE_PER_IMPRESSION_USD=0.00008 EXPECTED_IMPRESSIONS=80 ARCAD_AGENT_PRIVATE_KEY=\$VOLT_RUSH_PRIVATE_KEY; ./demo/pi-agents/start-pi-agent.sh" Enter
-tmux send-keys -t "$SESSION:0.1" "$COMMON; export AGENT_ID=northline COMPANY_NAME=Northline MAX_BID_USD=0.009 VALUE_PER_IMPRESSION_USD=0.00010 EXPECTED_IMPRESSIONS=90 ARCAD_AGENT_PRIVATE_KEY=\$NORTHLINE_PRIVATE_KEY; ./demo/pi-agents/start-pi-agent.sh" Enter
-tmux send-keys -t "$SESSION:0.2" "$COMMON; bun run demo/pi-agents/watch-market.ts" Enter
+tmux send-keys -t "$SESSION:0.0" "$COMMON; export PAYMENT_MODE=circle SELLER_ADDRESS=0x5d6FA4C059d74d0Ac262ff643853491eA7820C17 X402_NETWORKS=eip155:5042002 CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api-testnet.circle.com DEMO_ROUND_DURATION_MS=300000 BID_AUTHORIZATION_TTL_MS=345600000 CAMPAIGN_MANAGER_ENABLED=true CAMPAIGN_MANAGER_INTERVAL_MS=5000 MAX_BID_USD=0.10 PORT=8787; pm2 delete arcade-server >/dev/null 2>&1 || true; bun run demo/server-console.ts" Enter
+tmux send-keys -t "$SESSION:0.1" "$COMMON; export AGENT_ID=volt-rush COMPANY_NAME=VoltRush MAX_BID_USD=0.05 VALUE_PER_IMPRESSION_USD=0.00020 EXPECTED_IMPRESSIONS=250 ARCAD_AGENT_PRIVATE_KEY=\$VOLT_RUSH_PRIVATE_KEY; ./demo/pi-agents/start-pi-agent.sh" Enter
+tmux send-keys -t "$SESSION:0.2" "$COMMON; export AGENT_ID=northline COMPANY_NAME=Northline MAX_BID_USD=0.075 VALUE_PER_IMPRESSION_USD=0.00024 EXPECTED_IMPRESSIONS=300 ARCAD_AGENT_PRIVATE_KEY=\$NORTHLINE_PRIVATE_KEY; ./demo/pi-agents/start-pi-agent.sh" Enter
+tmux send-keys -t "$SESSION:0.3" "$COMMON; bun run demo/pi-agents/watch-market.ts" Enter
 
 echo "Started $SESSION"
 echo "Attach with: tmux attach -t $SESSION"

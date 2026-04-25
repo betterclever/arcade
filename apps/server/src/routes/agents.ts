@@ -1,12 +1,13 @@
 import type { Router } from "express";
 import { z } from "zod";
+import { config } from "../config";
 import { store } from "../state/store";
 
 const quoteSchema = z.object({
   surfaceId: z.string().default("raceway-billboard-main"),
   agentId: z.string().min(2),
   company: z.string().min(2),
-  maxBidUsd: z.number().positive().max(0.01),
+  maxBidUsd: z.number().positive().max(config.maxBidUsd),
   valuePerImpressionUsd: z.number().positive().default(0.00002),
   expectedImpressions: z.number().int().positive().default(250),
 });
