@@ -69,6 +69,6 @@ exec pi \
   --session-control \
   --skill "$ROOT/skills/arcade-bidder-agent/SKILL.md" \
   --tools read,bash,grep,find,ls \
-  --model "${PI_MODEL:-openai-codex/gpt-5.4-mini}" \
+  --model "${PI_MODEL:-quotio/gpt-5.4-mini}" \
   --thinking "${PI_THINKING:-medium}" \
   "$(cat "$PROMPT_FILE")"

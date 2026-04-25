@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ArcadeSDK, Bid, SurfaceSnapshot } from '@arcade/sdk'
+import { useEffect, useMemo, useState } from 'react'
+import { Bid, SurfaceSnapshot } from '@arcade/sdk'
 import { DrivingTelemetry } from './Car'
 import { DriveInputKey, setDriveInput } from '../utils/input'
 import { SceneId } from './RoadAndEnvironment'
@@ -11,7 +11,6 @@ interface HUDProps {
   activeWinner: Bid | null
   snapshot: SurfaceSnapshot | null
   textureUrl: string
-  sdk: ArcadeSDK
   telemetry: DrivingTelemetry
   mock: boolean
   scene: SceneId
@@ -34,6 +33,23 @@ function timeLabel(timestamp?: number) {
   }).format(new Date(timestamp))
 }
 
+function formatDuration(ms: number) {
+  const totalSeconds = Math.ceil(Math.max(0, ms) / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+function activityTime(bid: Bid) {
+  return bid.updatedAt ?? bid.timestamp
+}
+
+function roundTitle(roundId: string, snapshot: SurfaceSnapshot | null, index: number) {
+  if (snapshot?.round?.id === roundId) return 'Current round'
+  if (snapshot?.lastClosedRound?.id === roundId) return 'Last closed round'
+  return `Round ${index + 1}`
+}
+
 function ControlButton({ label, inputKey }: { label: string, inputKey: DriveInputKey }) {
   return (
     <button
@@ -51,51 +67,45 @@ function ControlButton({ label, inputKey }: { label: string, inputKey: DriveInpu
 
 const sceneOptions: SceneId[] = ['meadow', 'alpine', 'snow', 'autumn', 'coast', 'desert', 'dusk']
 
-export default function HUD({ bids, bidHistory, activeWinner, textureUrl, sdk, telemetry, mock, scene, car, onSceneChange, onCarChange, onHide }: HUDProps) {
+export default function HUD({ bids, bidHistory, activeWinner, snapshot, textureUrl, telemetry, mock, scene, car, onSceneChange, onCarChange, onHide }: HUDProps) {
   const liveLeader = bids[0]
   const displayWinner = activeWinner ?? liveLeader
-  const timeline = useMemo(() => {
+  const [now, setNow] = useState(Date.now())
+  const roundMsRemaining = snapshot?.round?.endsAt ? snapshot.round.endsAt - now : 0
+  const timelineRounds = useMemo(() => {
     const byId = new Map<string, Bid>()
     ;[...bidHistory, ...bids].forEach((bid) => byId.set(bid.id, bid))
-    return [...byId.values()].sort((a, b) => b.timestamp - a.timestamp).slice(0, 8)
-  }, [bidHistory, bids])
-  const [status, setStatus] = useState('ready')
-  const [error, setError] = useState<string | null>(null)
-  const nextBid = useMemo(() => {
-    const leader = liveLeader?.amountUsd ?? liveLeader?.amount ?? 0.002
-    return Math.min(0.01, Number((leader + 0.001).toFixed(3)))
-  }, [liveLeader])
+    const grouped = [...byId.values()].reduce<Map<string, Bid[]>>((acc, bid) => {
+      const roundId = bid.roundId ?? 'unknown'
+      acc.set(roundId, [...(acc.get(roundId) ?? []), bid])
+      return acc
+    }, new Map())
 
-  async function placeBid() {
-    setError(null)
-    setStatus('submitting bid')
-    try {
-      await sdk.submitBid({
-        amount: nextBid,
-        amountUsd: nextBid,
-        bidder: 'Arcade Driver',
-        company: 'Switchback Coffee',
-        prompt: 'A crisp mountain road billboard for Switchback Coffee, readable cream lettering, copper thermos, dawn light',
-        rationale: 'Player-triggered bid from the live driving demo.',
+    if (snapshot?.round?.id && !grouped.has(snapshot.round.id)) {
+      grouped.set(snapshot.round.id, [])
+    }
+
+    return [...grouped.entries()]
+      .map(([roundId, roundBids]) => ({
+        roundId,
+        round: snapshot?.rounds?.find((candidate) => candidate.id === roundId) ?? (snapshot?.round?.id === roundId ? snapshot.round : undefined),
+        bids: roundBids.sort((a, b) => activityTime(b) - activityTime(a)),
+        lastActivity: roundBids.length > 0 ? Math.max(...roundBids.map(activityTime)) : snapshot?.round?.startsAt ?? 0,
+      }))
+      .sort((a, b) => {
+        const aOpen = a.roundId === snapshot?.round?.id ? 1 : 0
+        const bOpen = b.roundId === snapshot?.round?.id ? 1 : 0
+        return bOpen - aOpen || b.lastActivity - a.lastActivity
       })
-      setStatus('bid accepted')
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Bid failed')
-      setStatus('mock fallback available')
-    }
-  }
+      .slice(0, 3)
+  }, [bidHistory, bids, snapshot])
+  const currentRoundBids = bids.length
+  const lastRenderedAt = snapshot?.lastClosedRound?.endsAt ?? activeWinner?.updatedAt ?? activeWinner?.timestamp
 
-  async function closeRound() {
-    setError(null)
-    setStatus('closing round')
-    try {
-      const result = await sdk.closeRound()
-      setStatus(result ? 'render requested' : 'mock render simulated')
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Close round failed')
-      setStatus('close failed')
-    }
-  }
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   return (
     <div className="hud">
@@ -141,16 +151,33 @@ export default function HUD({ bids, bidHistory, activeWinner, textureUrl, sdk, t
         </div>
       </section>
 
-      <section className="hud-panel action-panel">
+      <section className="hud-panel round-panel">
         <div className="action-head">
-          <span>auction controls</span>
-          <strong>{status}</strong>
+          <span>round stats</span>
+          <strong>{snapshot?.round?.status ?? 'syncing'}</strong>
         </div>
-        <div className="action-stack">
-          <button className="hud-button primary" onClick={placeBid} type="button">Bid {money(nextBid)}</button>
-          <button className="hud-button" onClick={closeRound} type="button">Close Round + Render</button>
+        <div className="round-timer">
+          <span>time left</span>
+          <strong>{snapshot?.round?.status === 'open' ? formatDuration(roundMsRemaining) : '--:--'}</strong>
         </div>
-        {error && <div className="hud-error">{error}</div>}
+        <div className="round-stat-grid">
+          <div>
+            <span>current bids</span>
+            <strong>{currentRoundBids}</strong>
+          </div>
+          <div>
+            <span>leader</span>
+            <strong>{liveLeader ? `${liveLeader.company ?? liveLeader.bidder} ${money(liveLeader.amountUsd ?? liveLeader.amount)}` : 'none'}</strong>
+          </div>
+          <div>
+            <span>last winner</span>
+            <strong>{activeWinner ? `${activeWinner.company ?? activeWinner.bidder} ${money(activeWinner.amountUsd ?? activeWinner.amount)}` : 'none'}</strong>
+          </div>
+          <div>
+            <span>last render</span>
+            <strong>{lastRenderedAt ? timeLabel(lastRenderedAt) : 'pending'}</strong>
+          </div>
+        </div>
       </section>
 
       <section className="hud-panel drive-panel">
@@ -201,21 +228,32 @@ export default function HUD({ bids, bidHistory, activeWinner, textureUrl, sdk, t
 
       <section className="hud-panel bid-panel">
         <div className="strip-head">
-          <span>Bid timeline</span>
-          <span>{timeline.length} shown</span>
+          <span>Bids by round</span>
+          <span>{timelineRounds.length} rounds</span>
         </div>
-        <div className="timeline-list">
-          {timeline.map((bid, index) => (
-            <div className={index === 0 ? 'timeline-row latest' : 'timeline-row'} key={bid.id}>
-              <div className="timeline-dot" />
-              <div className="timeline-copy">
-                <strong>{bid.company ?? bid.bidder}</strong>
-                <span>{bid.status ?? 'bid'} · {timeLabel(bid.timestamp)}</span>
+        <div className="round-list">
+          {timelineRounds.map((roundGroup, roundIndex) => (
+            <div className="round-group" key={roundGroup.roundId}>
+              <div className="round-group-head">
+                <span>{roundTitle(roundGroup.roundId, snapshot, roundIndex)}</span>
+                <strong>{roundGroup.round?.status ?? 'history'}</strong>
               </div>
-              <div className="timeline-amount">{money(bid.amountUsd ?? bid.amount)}</div>
+              <div className="timeline-list">
+                {roundGroup.bids.slice(0, 4).map((bid, index) => (
+                  <div className={index === 0 ? 'timeline-row latest' : 'timeline-row'} key={bid.id}>
+                    <div className="timeline-dot" />
+                    <div className="timeline-copy">
+                      <strong>{bid.company ?? bid.bidder}</strong>
+                      <span>{bid.status ?? 'bid'} · {timeLabel(activityTime(bid))}</span>
+                    </div>
+                    <div className="timeline-amount">{money(bid.amountUsd ?? bid.amount)}</div>
+                  </div>
+                ))}
+                {roundGroup.bids.length === 0 && <div className="empty-row">no bids yet</div>}
+              </div>
             </div>
           ))}
-          {timeline.length === 0 && <div className="empty-row">waiting for agents</div>}
+          {timelineRounds.length === 0 && <div className="empty-row">waiting for agents</div>}
         </div>
       </section>
     </div>

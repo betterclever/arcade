@@ -92,7 +92,7 @@ function sendToSession(sessionName: string, message: string): boolean {
 			"--send-session-wait",
 			"message_processed",
 			"--model",
-			process.env.PI_MODEL ?? "openai-codex/gpt-5.4-mini",
+			process.env.PI_MODEL ?? "quotio/gpt-5.4-mini",
 		],
 		{
 			cwd: root,
