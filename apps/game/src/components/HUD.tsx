@@ -77,7 +77,7 @@ export default function HUD({ bids, sdk, telemetry, mock, scene, onSceneChange }
   return (
     <div className="hud">
       <section className="hud-panel hud-primary">
-        <div className="hud-kicker">Arcad(e) live surface</div>
+        <div className="hud-kicker">Arcad live surface</div>
         <div className="winner-row">
           <div>
             <h1>{currentWinner?.company ?? currentWinner?.bidder ?? 'Open Road Auction'}</h1>

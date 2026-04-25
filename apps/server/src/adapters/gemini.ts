@@ -89,7 +89,7 @@ function renderMockBillboard(bid: Bid) {
   <text x="106" y="370" fill="#f8fafc" font-family="Arial, sans-serif" font-size="94" font-weight="800">${line}</text>
   <rect x="108" y="694" width="300" height="76" rx="14" fill="${palette.accent}"/>
   <text x="138" y="745" fill="#111827" font-family="Arial, sans-serif" font-size="34" font-weight="800">${amount}</text>
-  <text x="1120" y="764" fill="#f8fafc" font-family="Arial, sans-serif" font-size="30" font-weight="700">ARCAd(e)</text>
+  <text x="1120" y="764" fill="#f8fafc" font-family="Arial, sans-serif" font-size="30" font-weight="700">ARCAD</text>
 </svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

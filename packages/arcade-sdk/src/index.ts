@@ -95,7 +95,7 @@ export class ArcadeSDK extends EventEmitter {
         company: bid.company ?? bid.bidder,
         amountUsd: bid.amountUsd ?? bid.amount,
         prompt: bid.prompt,
-        rationale: bid.rationale ?? 'Manual in-game bid from Arcad(e) demo HUD.',
+        rationale: bid.rationale ?? 'Manual in-game bid from Arcad demo HUD.',
       }),
     });
     const data = await this.parseResponse(response);
@@ -264,7 +264,7 @@ export class ArcadeSDK extends EventEmitter {
   private async parseResponse(response: Response) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error ?? `Arcad(e) API returned ${response.status}`);
+      throw new Error(data.error ?? `Arcad API returned ${response.status}`);
     }
     return data;
   }

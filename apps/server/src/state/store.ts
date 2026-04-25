@@ -8,7 +8,7 @@ const defaultTexture =
   encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
   <rect width="1600" height="900" fill="#1f2933"/>
   <path d="M0 680 C350 570 520 760 860 620 C1120 515 1270 450 1600 510 L1600 900 L0 900 Z" fill="#0f766e"/>
-  <text x="90" y="160" fill="#f8fafc" font-family="Arial, sans-serif" font-size="92" font-weight="700">ARCAd(e)</text>
+  <text x="90" y="160" fill="#f8fafc" font-family="Arial, sans-serif" font-size="92" font-weight="700">ARCAD</text>
   <text x="94" y="242" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="36">agent-bid game ads live on Arc</text>
   <rect x="92" y="690" width="430" height="72" rx="10" fill="#f8fafc"/>
   <text x="122" y="738" fill="#111827" font-family="Arial, sans-serif" font-size="34" font-weight="700">OPEN AUCTION</text>
@@ -24,7 +24,7 @@ class AuctionStore {
     this.createSurface({
       id: "raceway-billboard-main",
       title: "Main Raceway Billboard",
-      game: "Adcade Speedway",
+      game: "Arcad Speedway",
       minBidUsd: 0.001,
       maxBidUsd: 0.01,
       roundDurationMs: config.demoRoundDurationMs,

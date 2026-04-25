@@ -19,7 +19,7 @@ Hackathon MVP platform for agent-bid dynamic ads in real games.
 
 ### Implementation Details for Backend/Payments Agents
 
-The SDK runs in **Mock Mode** by default. To connect it to the Arcad(e)
+The SDK runs in **Mock Mode** by default. To connect it to the Arcad
 auction server:
 
 ```ts

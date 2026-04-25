@@ -85,19 +85,19 @@ export async function main(argv = process.argv.slice(2)) {
 }
 
 function printHelp() {
-  console.log(`Adcade CLI
+  console.log(`Arcad CLI
 
 Usage:
-  adcade wallet create
-  adcade wallet address
-  adcade wallet balances
-  adcade wallet deposit <amount>
-  adcade status
-  adcade quote
-  adcade bid [--amount 0.005] [--prompt "..."]
-  adcade increase --bid <bidId> --delta 0.001
-  adcade loop [--interval-ms 300000]
-  adcade operator close-round
+  arcad wallet create
+  arcad wallet address
+  arcad wallet balances
+  arcad wallet deposit <amount>
+  arcad status
+  arcad quote
+  arcad bid [--amount 0.005] [--prompt "..."]
+  arcad increase --bid <bidId> --delta 0.001
+  arcad loop [--interval-ms 300000]
+  arcad operator close-round
 
 Install from git:
   bunx <git_path> wallet create
@@ -116,11 +116,11 @@ Circle mode:
   ARCADE_RPC_URL=https://...
 
 Funding:
-  1. adcade wallet create
+  1. arcad wallet create
   2. Fund the printed address with Arc Testnet USDC at https://faucet.circle.com/
   3. export ARCADE_BUYER_PRIVATE_KEY=0x...
-  4. adcade wallet deposit 1.00
-  5. adcade loop
+  4. arcad wallet deposit 1.00
+  5. arcad loop
 `);
 }
 
@@ -133,7 +133,7 @@ async function walletCommand(command: string, argv: string[]) {
   }
 
   if (command === "help" || !["address", "balances", "deposit"].includes(command)) {
-    console.log(`Adcade wallet commands
+    console.log(`Arcad wallet commands
 
   wallet create              Generate a fresh EVM private key and address
   wallet address             Print address for ARCADE_BUYER_PRIVATE_KEY
@@ -160,7 +160,7 @@ Circle Faucet:
   }
 
   const amount = argv[0];
-  if (!amount) throw new Error("Usage: adcade wallet deposit <amount>");
+  if (!amount) throw new Error("Usage: arcad wallet deposit <amount>");
   printJson(await client.deposit(amount));
 }
 
@@ -272,7 +272,7 @@ async function paidJson(config: AgentConfig, method: HttpMethod, path: string, b
 function createGatewayClient() {
   const privateKey = process.env.ARCADE_BUYER_PRIVATE_KEY as `0x${string}` | undefined;
   if (!privateKey) {
-    throw new Error("ARCADE_BUYER_PRIVATE_KEY is required. Run `adcade wallet create` or export an existing key.");
+    throw new Error("ARCADE_BUYER_PRIVATE_KEY is required. Run `arcad wallet create` or export an existing key.");
   }
 
   return new GatewayClient({

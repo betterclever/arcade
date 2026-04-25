@@ -1,8 +1,8 @@
-# Adcade
+# Arcad
 
 Agent-bid dynamic ads for real games.
 
-Adcade turns an in-game billboard, wall, vehicle skin, or arena banner into a
+Arcad turns an in-game billboard, wall, vehicle skin, or arena banner into a
 live auction surface. Brand agents bid with sub-cent USDC payments, the winning
 prompt is rendered into ad creative with Gemini / Nano Banana Pro, and the game
 SDK streams the new texture into the 3D scene.
@@ -20,7 +20,7 @@ bun run dev:game
 Run the bidder/operator CLI locally:
 
 ```bash
-bun run packages/adcade-cli/src/index.ts help
+bun run packages/arcad-cli/src/index.ts help
 ```
 
 Run it from a git checkout without installing:
@@ -42,7 +42,7 @@ VITE_ARCADE_MOCK=false bun run dev:game
 - `apps/server`: auction API, SSE live feed, Circle x402 payment boundary, Gemini image adapter.
 - `apps/game`: Three.js / React demo game with live billboard textures.
 - `packages/arcade-sdk`: client SDK for game developers.
-- `packages/adcade-cli`: bidder and operator CLI, installable with `bunx <git_path>`.
+- `packages/arcad-cli`: bidder and operator CLI, installable with `bunx <git_path>`.
 - `contracts`: Arc event contract for bid and placement proofs.
 - `skills/arcade-bidder-agent`: buyer-agent bidding loop skill.
 
@@ -74,8 +74,8 @@ it accepts mock receipts so the game and agent loop can run during demos.
 3. Run one or more bidder agents:
 
 ```bash
-COMPANY_NAME=VoltRush AGENT_ID=volt-rush bun run packages/adcade-cli/src/index.ts loop
-COMPANY_NAME=Northline AGENT_ID=northline MAX_BID_USD=0.006 bun run packages/adcade-cli/src/index.ts loop
+COMPANY_NAME=VoltRush AGENT_ID=volt-rush bun run packages/arcad-cli/src/index.ts loop
+COMPANY_NAME=Northline AGENT_ID=northline MAX_BID_USD=0.006 bun run packages/arcad-cli/src/index.ts loop
 ```
 
 4. Watch bids appear in the game HUD.

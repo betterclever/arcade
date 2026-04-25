@@ -1,19 +1,19 @@
 ---
-name: adcade-bidder-agent
-description: "Autonomous brand bidding for Adcade game ad surfaces. Prices each round, funds through Circle Gateway, submits x402-paid bids, and increases bids only when expected value clears company constraints."
+name: arcad-bidder-agent
+description: "Autonomous brand bidding for Arcad game ad surfaces. Prices each round, funds through Circle Gateway, submits x402-paid bids, and increases bids only when expected value clears company constraints."
 license: MIT
 compatibility: "Works with any agentskills.io-compatible harness — Claude Code, Claude, OpenCode, Cursor, Codex, Gemini CLI, OpenClaw, Hermes, Goose, and others. Requires Bun, curl, and either mock mode or Circle Gateway buyer credentials."
-metadata: {"adcade": {"homepage": "https://adcade.local", "requires": {"bins": ["bun", "curl"], "env": ["ARCADE_API_URL"]}, "primaryEnv": "ARCADE_API_URL", "harnesses": ["claude-code", "claude", "opencode", "cursor", "codex", "gemini-cli", "openclaw", "hermes", "goose"]}}
+metadata: {"arcad": {"homepage": "https://arcad.local", "requires": {"bins": ["bun", "curl"], "env": ["ARCADE_API_URL"]}, "primaryEnv": "ARCADE_API_URL", "harnesses": ["claude-code", "claude", "opencode", "cursor", "codex", "gemini-cli", "openclaw", "hermes", "goose"]}}
 ---
 
-# Adcade Bidder Agent
+# Arcad Bidder Agent
 
-Autonomous bidding for dynamic in-game ad surfaces, powered by Adcade.
+Autonomous bidding for dynamic in-game ad surfaces, powered by Arcad.
 
 One bidder wallet. One Circle Gateway deposit. Agents can bid every round.
 
 Use this skill when an agent represents a company or brand bidding for an
-Adcade billboard, wall, vehicle skin, arena banner, or other game ad surface.
+Arcad billboard, wall, vehicle skin, arena banner, or other game ad surface.
 
 The platform operator owns bid reception, payment verification, Gemini/Nano
 Banana Pro image generation, and game texture display. This skill helps the
@@ -25,7 +25,7 @@ Works with any [agentskills.io](https://agentskills.io)-compatible harness,
 including Claude Code, Claude, OpenAI Codex, Cursor, Gemini CLI, OpenCode,
 Goose, OpenClaw, Hermes, and others.
 
-Requires Bun, the Adcade CLI, and an Adcade auction API.
+Requires Bun, the Arcad CLI, and an Arcad auction API.
 
 ## Quick Start
 
@@ -37,7 +37,7 @@ export ARCADE_PAYMENT_MODE="mock"
 export COMPANY_NAME="VoltRush"
 export AGENT_ID="volt-rush-agent"
 
-bun run packages/adcade-cli/src/index.ts loop
+bun run packages/arcad-cli/src/index.ts loop
 ```
 
 Preferred from git:
@@ -77,7 +77,7 @@ bunx <git_path> loop
 
 ## Wallet Funding
 
-Adcade uses Circle Gateway Nanopayments through
+Arcad uses Circle Gateway Nanopayments through
 `@circle-fin/x402-batching`.
 
 The buyer flow is:
@@ -85,7 +85,7 @@ The buyer flow is:
 1. Create or import an EVM private key.
 2. Fund that address with Arc Testnet USDC from the Circle Faucet:
    `https://faucet.circle.com/`
-3. Run `adcade wallet deposit <amount>` to move USDC into Circle Gateway.
+3. Run `arcad wallet deposit <amount>` to move USDC into Circle Gateway.
 4. Each bid calls `GatewayClient.pay(...)`, which handles the x402 `402`
    challenge, signs the payment authorization, and retries the request.
 
@@ -96,7 +96,7 @@ faucet or an existing funded wallet.
 Generate a fresh local buyer key:
 
 ```bash
-bun run packages/adcade-cli/src/index.ts wallet create
+bun run packages/arcad-cli/src/index.ts wallet create
 ```
 
 Or from git:
@@ -114,7 +114,7 @@ uses the same native USDC balance.
 
 ## Required Inputs
 
-- `ARCADE_API_URL`: Adcade auction API, for example `http://localhost:8787/api`
+- `ARCADE_API_URL`: Arcad auction API, for example `http://localhost:8787/api`
 - `ARCADE_SURFACE_ID`: target surface, for example `raceway-billboard-main`
 - `AGENT_ID`: stable machine identity for this bidder
 - `COMPANY_NAME`: advertiser name
@@ -164,7 +164,7 @@ Make the whole game about us and cover every surface.
 
 ## API Reference
 
-Adcade bidder endpoints:
+Arcad bidder endpoints:
 
 - `POST /agents/quote`: get suggested bid and reason.
 - `POST /surfaces/{surfaceId}/bids`: submit a paid bid.

@@ -1,6 +1,6 @@
-# Adcade CLI
+# Arcad CLI
 
-Command center for Adcade bidder agents.
+Command center for Arcad bidder agents.
 
 ```bash
 bunx <git_path> wallet create

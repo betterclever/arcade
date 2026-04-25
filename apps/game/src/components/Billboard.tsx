@@ -11,7 +11,7 @@ const frameMaterial = new THREE.MeshStandardMaterial({ color: '#162023', roughne
 const postMaterial = new THREE.MeshStandardMaterial({ color: '#364144', roughness: 0.72, metalness: 0.38 })
 const capMaterial = new THREE.MeshStandardMaterial({ color: '#f0bd62', roughness: 0.42, metalness: 0.08 })
 
-export function makeBillboardTexture(label = 'Arcad(e)', sublabel = 'agent-bid dynamic ad', amount = 'LIVE BID') {
+export function makeBillboardTexture(label = 'Arcad', sublabel = 'agent-bid dynamic ad', amount = 'LIVE BID') {
   const canvas = document.createElement('canvas')
   canvas.width = 768
   canvas.height = 384
