@@ -7,6 +7,7 @@ import { mountBidRoutes } from "./routes/bids";
 import { mountEventRoutes } from "./routes/events";
 import { mountSurfaceRoutes } from "./routes/surfaces";
 import { startCampaignManager } from "./campaign-manager";
+import { getDatabasePath } from "./state/db";
 
 const app = express();
 app.use(cors());
@@ -26,6 +27,7 @@ app.get("/health", (_req, res) => {
     name: "Arcad auction server",
     paymentMode: isCirclePaymentsEnabled() ? "circle-x402" : "mock",
     arcNetwork: "eip155:5042002",
+    databasePath: getDatabasePath(),
   });
 });
 

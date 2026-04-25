@@ -34,6 +34,7 @@ type Payment = {
 };
 
 const apiUrl = process.env.ARCADE_API_URL ?? "http://localhost:8787/api";
+const serverUrl = apiUrl.replace(/\/api\/?$/, "");
 const surfaceId = process.env.ARCADE_SURFACE_ID ?? "raceway-billboard-main";
 const logs: string[] = [];
 const maxLogs = 12;
@@ -90,8 +91,19 @@ async function getJson<T>(path: string): Promise<T | null> {
   }
 }
 
+async function getHealth(): Promise<{ databasePath?: string } | null> {
+  try {
+    const response = await fetch(`${serverUrl}/health`);
+    if (!response.ok) return null;
+    return await response.json() as { databasePath?: string };
+  } catch {
+    return null;
+  }
+}
+
 async function render() {
   const campaigns = await getJson<{ campaigns: Campaign[] }>("/campaigns");
+  const health = await getHealth();
   const bids = await getJson<{ bids: Bid[] }>(`/surfaces/${surfaceId}/bids`);
   const payments = await getJson<{ payments: Payment[] }>(`/surfaces/${surfaceId}/payments`);
   const campaign = campaigns?.campaigns?.[0];
@@ -104,6 +116,7 @@ async function render() {
     "==========================",
     line("process", server.exitCode === null ? `running pid=${server.pid}` : `stopped code=${server.exitCode}`),
     line("api", apiUrl),
+    line("db", health?.databasePath ?? "connecting"),
     line("surface", campaign ? `${campaign.surface.game} / ${campaign.surface.title}` : "waiting for server"),
     line("round", campaign ? `${campaign.round.id} (${campaign.round.status})` : "n/a"),
     line("time left", campaign ? duration(campaign.round.endsAt - Date.now()) : "n/a"),

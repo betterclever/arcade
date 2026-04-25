@@ -1,6 +1,7 @@
 export const config = {
   port: Number(process.env.PORT ?? 8787),
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "http://localhost:8787",
+  databasePath: process.env.ARCAD_DB_PATH ?? process.env.DATABASE_PATH ?? "./arcad.sqlite",
   paymentMode: (process.env.PAYMENT_MODE ?? "mock") as "mock" | "circle",
   sellerAddress: process.env.SELLER_ADDRESS,
   acceptedNetworks: (process.env.X402_NETWORKS ?? "eip155:5042002")

@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { config } from "../config";
 import type { AdSurface, AuctionRound, Bid, PaymentKind, PaymentLedgerEntry, PaymentReceipt, TextureUpdate } from "../types";
+import { loadStoreSnapshot, saveStoreSnapshot } from "./db";
 import { publish } from "./event-bus";
 
 const defaultTexture =
@@ -22,6 +23,38 @@ class AuctionStore {
   textures: TextureUpdate[] = [];
 
   constructor() {
+    const snapshot = loadStoreSnapshot();
+    if (snapshot) {
+      this.surfaces = new Map(snapshot.surfaces.map((surface) => [surface.id, surface]));
+      this.rounds = new Map(snapshot.rounds.map((round) => [round.id, round]));
+      this.bids = new Map(snapshot.bids.map((bid) => [bid.id, bid]));
+      this.payments = snapshot.payments;
+      this.textures = snapshot.textures;
+    }
+    this.ensureDefaultSurface();
+  }
+
+  private ensureDefaultSurface() {
+    const existingSurface = this.surfaces.get("raceway-billboard-main");
+    if (existingSurface) {
+      const updatedSurface: AdSurface = {
+        ...existingSurface,
+        title: "Switchback Highway Billboard",
+        game: "Arcad Drive",
+        description: "Slow-roads inspired seasonal highway demo with a live roadside billboard visible from the driving line.",
+        placement: "roadside-billboard",
+        aspectRatio: config.geminiImageAspectRatio,
+        dimensions: { width: 3168, height: 1344 },
+        tags: ["driving", "roadside", "billboard", "seasonal", "agent-ads"],
+        minBidUsd: 0.001,
+        maxBidUsd: config.maxBidUsd,
+        roundDurationMs: config.demoRoundDurationMs,
+      };
+      this.surfaces.set(existingSurface.id, updatedSurface);
+      this.save();
+      return;
+    }
+
     this.createSurface({
       id: "raceway-billboard-main",
       title: "Switchback Highway Billboard",
@@ -34,6 +67,16 @@ class AuctionStore {
       minBidUsd: 0.001,
       maxBidUsd: config.maxBidUsd,
       roundDurationMs: config.demoRoundDurationMs,
+    });
+  }
+
+  private save() {
+    saveStoreSnapshot({
+      surfaces: [...this.surfaces.values()],
+      rounds: [...this.rounds.values()],
+      bids: [...this.bids.values()],
+      payments: this.payments,
+      textures: this.textures,
     });
   }
 
@@ -70,6 +113,7 @@ class AuctionStore {
         roundDurationMs: input.roundDurationMs ?? existingSurface.roundDurationMs,
       };
       this.surfaces.set(id, updatedSurface);
+      this.save();
       publish({ type: "surface.created", surface: updatedSurface });
       return updatedSurface;
     }
@@ -91,6 +135,7 @@ class AuctionStore {
       createdAt: Date.now(),
     };
     this.surfaces.set(id, surface);
+    this.save();
     publish({ type: "surface.created", surface });
     return surface;
   }
@@ -243,6 +288,7 @@ class AuctionStore {
     this.bids.set(bid.id, bid);
     this.refreshLeaders(input.surfaceId);
     this.recordPayment("bid-entry", bid, input.receipt);
+    this.save();
     publish({ type: "bid.created", bid });
     return bid;
   }
@@ -263,6 +309,7 @@ class AuctionStore {
     bid.updatedAt = Date.now();
     this.refreshLeaders(bid.surfaceId);
     this.recordPayment("bid-increase", bid, receipt);
+    this.save();
     publish({ type: "bid.increased", bid, deltaUsd });
     return bid;
   }
@@ -280,6 +327,7 @@ class AuctionStore {
         if (bid.id !== winningBid.id) bid.status = "rejected";
       });
     }
+    this.save();
     publish({ type: "round.closed", round, winningBid });
     return { round, winningBid };
   }
@@ -339,6 +387,7 @@ class AuctionStore {
       publish({ type: "payment.recorded", payment });
     }
 
+    this.save();
     return { settled, released, failed };
   }
 
@@ -353,6 +402,7 @@ class AuctionStore {
       surface.currentRoundId = nextRound.id;
     }
     this.textures.push(update);
+    this.save();
     publish({ type: "texture.updated", update });
     return update;
   }
@@ -365,6 +415,7 @@ class AuctionStore {
     round.status = "closed";
     const nextRound = this.createRound(surface.id, surface.roundDurationMs);
     surface.currentRoundId = nextRound.id;
+    this.save();
     publish({ type: "round.closed", round });
     return round;
   }
