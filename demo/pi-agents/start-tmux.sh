@@ -10,6 +10,14 @@ if [[ ! -f /tmp/arcad-agents.env ]]; then
 fi
 
 tmux kill-session -t "$SESSION" 2>/dev/null || true
+pkill -f "demo/pi-agents/watch-market.ts" 2>/dev/null || true
+pkill -f "^pi( |$)" 2>/dev/null || true
+rm -f "$HOME/.pi/session-control/arcad-mission-control-ai.alias" \
+      "$HOME/.pi/session-control/arcad-sutro-inference.alias" \
+      "$HOME/.pi/session-control/arcad-volt-rush.alias" \
+      "$HOME/.pi/session-control/arcad-northline.alias" \
+      "$HOME/.pi/session-control"/*.sock 2>/dev/null || true
+sleep 1
 
 tmux new-session -d -s "$SESSION" -n control-room -c "$ROOT" zsh
 tmux split-window -h -p 36 -t "$SESSION:0" -c "$ROOT" zsh

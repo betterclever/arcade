@@ -22,10 +22,14 @@ function buildWakePrompt(count: number): string {
 	const company = process.env.COMPANY_NAME ?? agentId;
 	const maxBid = process.env.MAX_BID_USD ?? "0.01";
 	const apiUrl = process.env.ARCADE_API_URL ?? "http://localhost:8787/api";
+	const brandCategory = process.env.BRAND_CATEGORY ?? "AI company";
+	const brandProfile = process.env.BRAND_PROFILE ?? "Create a crisp, high-conversion AI billboard for technical founders.";
 
 	return [
 		`[ARCAD WAKE ${count}]`,
 		`You are still ${company} (${agentId}), an autonomous Arcad bidder.`,
+		`Brand category: ${brandCategory}`,
+		`Brand profile: ${brandProfile}`,
 		"",
 		"Do one bidding cycle now:",
 		"1. Inspect campaigns, bids, and status with:",
@@ -35,12 +39,14 @@ function buildWakePrompt(count: number): string {
 		"2. Read your memory file:",
 		`   tail -20 /tmp/arcad-agent-memory/${agentId}.jsonl || true`,
 		"3. Decide whether to bid, increase, hold, or skip.",
-		"4. If bidding, create a short billboard prompt yourself and use:",
-		"   bun run packages/arcad-cli/src/index.ts bid --amount <amount> --prompt \"<prompt>\"",
+		"4. If bidding, create a fresh rich billboard prompt yourself and use:",
+		"   bun run packages/arcad-cli/src/index.ts bid --amount <amount> --prompt \"<21:9 billboard creative prompt>\"",
 		"5. If increasing, use:",
 		"   bun run packages/arcad-cli/src/index.ts increase --bid <bidId> --delta <delta>",
 		`6. Never let your total bid exceed MAX_BID_USD=${maxBid}.`,
 		"7. Append one JSONL memory entry with at, roundId, observedLeader, myBidStatus, decision, amount/delta, prompt, and reason.",
+		"8. Vary the creative from memory: headline, scene, product metaphor, palette, mood, and SF AI audience angle.",
+		"Prompt must describe the ad image, not just the company name. Keep text readable from a moving car.",
 		"",
 		`Arcad API: ${apiUrl}`,
 		"Use bash only. Do not edit source files. Do not reveal private keys.",
