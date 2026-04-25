@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
 import { GatewayClient, type SupportedChainName } from "@circle-fin/x402-batching/client";
@@ -33,6 +34,7 @@ interface BidResponse {
 
 const DEFAULT_API_URL = "http://localhost:8787/api";
 const DEFAULT_SURFACE_ID = "raceway-billboard-main";
+const CIRCLE_FAUCET_URL = "https://faucet.circle.com/";
 
 export async function main(argv = process.argv.slice(2)) {
   const [command] = argv;
@@ -46,6 +48,11 @@ export async function main(argv = process.argv.slice(2)) {
   if (command === "wallet") {
     const [subcommand = "help", ...rest] = args;
     await walletCommand(subcommand, rest);
+    return;
+  }
+
+  if (command === "faucet") {
+    await openFaucet(args);
     return;
   }
 
@@ -138,6 +145,7 @@ Usage:
   arcad wallet address
   arcad wallet balances
   arcad wallet deposit <amount>
+  arcad faucet [--address 0x...] [--no-open]
   arcad status
   arcad bids
   arcad rounds
@@ -171,11 +179,56 @@ Circle mode:
 
 Funding:
   1. arcad wallet create
-  2. Fund the printed address with Arc Testnet USDC at https://faucet.circle.com/
+  2. arcad faucet
   3. export ARCADE_BUYER_PRIVATE_KEY=0x...
   4. arcad wallet deposit 1.00
   5. arcad loop
 `);
+}
+
+async function openFaucet(argv: string[]) {
+  const explicitAddress = readFlag(argv, "address");
+  const noOpen = hasFlag(argv, "no-open");
+  const noCopy = hasFlag(argv, "no-copy");
+  const wallet = resolveFaucetWallet(explicitAddress);
+  const copiedToClipboard = noCopy ? false : await copyToClipboard(wallet.address);
+  const opened = noOpen ? false : await openUrl(CIRCLE_FAUCET_URL);
+
+  printJson({
+    faucetUrl: CIRCLE_FAUCET_URL,
+    network: "Arc Testnet",
+    token: "USDC",
+    address: wallet.address,
+    generatedPrivateKey: wallet.generatedPrivateKey,
+    copiedToClipboard,
+    opened,
+    nextSteps: [
+      "In Circle Faucet, choose Arc Testnet and USDC.",
+      "Paste the address above.",
+      "After funds arrive, run: arcad wallet balances",
+      "Then run: arcad wallet deposit 1.00",
+    ],
+    note: wallet.generatedPrivateKey
+      ? "A fresh wallet was generated because ARCADE_BUYER_PRIVATE_KEY and --address were not provided. Store the private key securely and export it before depositing."
+      : "Use the same address/private key for faucet funding and Gateway deposit.",
+  });
+}
+
+function resolveFaucetWallet(explicitAddress: string) {
+  if (explicitAddress) {
+    return { address: explicitAddress, generatedPrivateKey: undefined };
+  }
+
+  const privateKey = process.env.ARCADE_BUYER_PRIVATE_KEY as `0x${string}` | undefined;
+  if (privateKey) {
+    return { address: privateKeyToAccount(privateKey).address, generatedPrivateKey: undefined };
+  }
+
+  const generatedPrivateKey = `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
+  return {
+    address: privateKeyToAccount(generatedPrivateKey).address,
+    generatedPrivateKey,
+  };
 }
 
 async function walletCommand(command: string, argv: string[]) {
@@ -424,6 +477,10 @@ function readFlag(argv: string[], name: string, fallback?: string): string {
   return value;
 }
 
+function hasFlag(argv: string[], name: string) {
+  return argv.includes(`--${name}`);
+}
+
 function requiredFlag(argv: string[], name: string) {
   const value = readFlag(argv, name);
   if (!value) throw new Error(`Missing --${name}`);
@@ -461,6 +518,43 @@ function printJson(value: unknown) {
 
 function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? value.toString() : value;
+}
+
+async function openUrl(url: string) {
+  const command =
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "cmd"
+        : "xdg-open";
+  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  return runQuiet(command, args);
+}
+
+async function copyToClipboard(value: string) {
+  const command =
+    process.platform === "darwin"
+      ? "pbcopy"
+      : process.platform === "win32"
+        ? "clip"
+        : "wl-copy";
+  return new Promise<boolean>((resolve) => {
+    const child = spawn(command, [], { stdio: ["pipe", "ignore", "ignore"] }) as any;
+    child.on("error", () => resolve(false));
+    child.on("close", (code: number) => resolve(code === 0));
+    child.stdin.end(value);
+  });
+}
+
+async function runQuiet(command: string, args: string[]) {
+  return new Promise<boolean>((resolve) => {
+    const child = spawn(command, args, { stdio: "ignore", detached: true }) as any;
+    child.on("error", () => resolve(false));
+    child.on("spawn", () => {
+      child.unref();
+      resolve(true);
+    });
+  });
 }
 
 function decodePaymentRequired(value: string) {

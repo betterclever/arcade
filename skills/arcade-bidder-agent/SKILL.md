@@ -63,6 +63,12 @@ Check wallet and Gateway balances:
 bunx <git_path> wallet balances
 ```
 
+Open the Circle Faucet for the active wallet:
+
+```bash
+bunx <git_path> faucet
+```
+
 Deposit USDC into Circle Gateway once:
 
 ```bash
@@ -122,6 +128,9 @@ as `ARCADE_BUYER_PRIVATE_KEY`, then fund the address.
 In the faucet UI, choose Arc Testnet, choose USDC, paste the generated address,
 and request funds. Arc uses USDC for gas, and its ERC-20 USDC interface also
 uses the same native USDC balance.
+
+Use `arcad faucet` to open the Circle Faucet page, print the active wallet
+address, and copy the address to the clipboard when the host supports it.
 
 ## Required Inputs
 

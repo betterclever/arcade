@@ -27,6 +27,7 @@ Run it from a git checkout without installing:
 
 ```bash
 bunx <git_path> wallet create
+bunx <git_path> faucet
 bunx <git_path> loop
 bunx <git_path> status
 bunx <git_path> payments
@@ -68,6 +69,14 @@ bun run dev:server
 
 The server uses Circle Gateway Nanopayments middleware when enabled. Otherwise,
 it accepts mock receipts so the game and agent loop can run during demos.
+
+Fund a buyer wallet from the Circle public faucet:
+
+```bash
+bun run packages/arcad-cli/src/index.ts faucet
+bun run packages/arcad-cli/src/index.ts wallet balances
+bun run packages/arcad-cli/src/index.ts wallet deposit 1.00
+```
 
 ## Demo Flow
 
