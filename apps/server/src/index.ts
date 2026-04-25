@@ -22,7 +22,7 @@ app.use("/api", router);
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
-    name: "Arcad(e) auction server",
+    name: "Adcade auction server",
     paymentMode: isCirclePaymentsEnabled() ? "circle-x402" : "mock",
     arcNetwork: "eip155:5042002",
   });
@@ -38,6 +38,6 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 });
 
 app.listen(config.port, () => {
-  console.log(`Arcad(e) auction server listening on http://localhost:${config.port}`);
+  console.log(`Adcade auction server listening on http://localhost:${config.port}`);
   console.log(`Payment mode: ${isCirclePaymentsEnabled() ? "Circle x402 Nanopayments" : "mock demo payments"}`);
 });

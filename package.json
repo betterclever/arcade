@@ -1,6 +1,9 @@
 {
-  "name": "circlehack",
-  "private": true,
+  "name": "adcade",
+  "private": false,
+  "bin": {
+    "adcade": "./packages/adcade-cli/src/index.ts"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -9,8 +12,9 @@
     "dev": "bun run dev:server",
     "dev:server": "bun run --cwd apps/server dev",
     "dev:sdk": "bun run --cwd packages/arcade-sdk dev",
+    "dev:cli": "bun run --cwd packages/adcade-cli dev",
     "dev:game": "bun run --cwd apps/game dev",
-    "build": "bun run --cwd packages/arcade-sdk build && bun run --cwd apps/server build && bun run --cwd apps/game build",
+    "build": "bun run --cwd packages/adcade-cli build && bun run --cwd packages/arcade-sdk build && bun run --cwd apps/server build && bun run --cwd apps/game build",
     "demo": "bun run --cwd apps/server dev"
   },
   "devDependencies": {

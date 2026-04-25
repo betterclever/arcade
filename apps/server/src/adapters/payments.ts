@@ -86,6 +86,7 @@ async function getCircleGateway() {
         return createGatewayMiddleware({
           sellerAddress: config.sellerAddress,
           networks: config.acceptedNetworks,
+          facilitatorUrl: config.circleGatewayFacilitatorUrl,
         });
       })
       .catch((error) => {

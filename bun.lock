@@ -57,6 +57,21 @@
         "typescript": "^5.9.3",
       },
     },
+    "packages/adcade-cli": {
+      "name": "@adcade/cli",
+      "version": "0.1.0",
+      "bin": {
+        "adcade": "./src/index.ts",
+      },
+      "dependencies": {
+        "@circle-fin/x402-batching": "^3.0.2",
+        "viem": "^2.48.4",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.7.2",
+      },
+    },
     "packages/arcade-sdk": {
       "name": "@arcade/sdk",
       "version": "0.1.0",
@@ -72,6 +87,8 @@
     },
   },
   "packages": {
+    "@adcade/cli": ["@adcade/cli@workspace:packages/adcade-cli"],
+
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
 
     "@arcade/sdk": ["@arcade/sdk@workspace:packages/arcade-sdk"],

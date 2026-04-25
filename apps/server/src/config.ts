@@ -7,6 +7,11 @@ export const config = {
     .split(",")
     .map((network) => network.trim())
     .filter(Boolean),
+  circleGatewayFacilitatorUrl:
+    process.env.CIRCLE_GATEWAY_FACILITATOR_URL ??
+    ((process.env.X402_NETWORKS ?? "eip155:5042002").includes("5042002")
+      ? "https://gateway-api-testnet.circle.com"
+      : undefined),
   bidEntryFeeUsd: process.env.BID_ENTRY_FEE_USD ?? "$0.001",
   bidIncreaseFeeUsd: process.env.BID_INCREASE_FEE_USD ?? "$0.001",
   googleApiKey: process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY,

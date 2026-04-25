@@ -24,7 +24,7 @@ class AuctionStore {
     this.createSurface({
       id: "raceway-billboard-main",
       title: "Main Raceway Billboard",
-      game: "Arcad(e) Speedway",
+      game: "Adcade Speedway",
       minBidUsd: 0.001,
       maxBidUsd: 0.01,
       roundDurationMs: config.demoRoundDurationMs,

@@ -1,19 +1,19 @@
 ---
-name: arcade-bidder-agent
-description: "Autonomous brand bidding for Arcad(e) game ad surfaces. Prices each round, funds through Circle Gateway, submits x402-paid bids, and increases bids only when expected value clears company constraints."
+name: adcade-bidder-agent
+description: "Autonomous brand bidding for Adcade game ad surfaces. Prices each round, funds through Circle Gateway, submits x402-paid bids, and increases bids only when expected value clears company constraints."
 license: MIT
 compatibility: "Works with any agentskills.io-compatible harness — Claude Code, Claude, OpenCode, Cursor, Codex, Gemini CLI, OpenClaw, Hermes, Goose, and others. Requires Bun, curl, and either mock mode or Circle Gateway buyer credentials."
-metadata: {"arcade": {"homepage": "https://arcade.local", "requires": {"bins": ["bun", "curl"], "env": ["ARCADE_API_URL"]}, "primaryEnv": "ARCADE_API_URL", "harnesses": ["claude-code", "claude", "opencode", "cursor", "codex", "gemini-cli", "openclaw", "hermes", "goose"]}}
+metadata: {"adcade": {"homepage": "https://adcade.local", "requires": {"bins": ["bun", "curl"], "env": ["ARCADE_API_URL"]}, "primaryEnv": "ARCADE_API_URL", "harnesses": ["claude-code", "claude", "opencode", "cursor", "codex", "gemini-cli", "openclaw", "hermes", "goose"]}}
 ---
 
-# Arcad(e) Bidder Agent
+# Adcade Bidder Agent
 
-Autonomous bidding for dynamic in-game ad surfaces, powered by Arcad(e).
+Autonomous bidding for dynamic in-game ad surfaces, powered by Adcade.
 
 One bidder wallet. One Circle Gateway deposit. Agents can bid every round.
 
 Use this skill when an agent represents a company or brand bidding for an
-Arcad(e) billboard, wall, vehicle skin, arena banner, or other game ad surface.
+Adcade billboard, wall, vehicle skin, arena banner, or other game ad surface.
 
 The platform operator owns bid reception, payment verification, Gemini/Nano
 Banana Pro image generation, and game texture display. This skill helps the
@@ -25,7 +25,7 @@ Works with any [agentskills.io](https://agentskills.io)-compatible harness,
 including Claude Code, Claude, OpenAI Codex, Cursor, Gemini CLI, OpenCode,
 Goose, OpenClaw, Hermes, and others.
 
-Requires Bun and an Arcad(e) auction API.
+Requires Bun, the Adcade CLI, and an Adcade auction API.
 
 ## Quick Start
 
@@ -37,7 +37,13 @@ export ARCADE_PAYMENT_MODE="mock"
 export COMPANY_NAME="VoltRush"
 export AGENT_ID="volt-rush-agent"
 
-bun run skills/arcade-bidder-agent/scripts/bidder.ts
+bun run packages/adcade-cli/src/index.ts loop
+```
+
+Preferred from git:
+
+```bash
+bunx <git_path> loop
 ```
 
 ### Circle Nanopayments mode
@@ -54,31 +60,32 @@ export AGENT_ID="volt-rush-agent"
 Check wallet and Gateway balances:
 
 ```bash
-bun run skills/arcade-bidder-agent/scripts/wallet.ts balances
+bunx <git_path> wallet balances
 ```
 
 Deposit USDC into Circle Gateway once:
 
 ```bash
-bun run skills/arcade-bidder-agent/scripts/wallet.ts deposit 1.00
+bunx <git_path> wallet deposit 1.00
 ```
 
 Start the bidder:
 
 ```bash
-bun run skills/arcade-bidder-agent/scripts/bidder.ts
+bunx <git_path> loop
 ```
 
 ## Wallet Funding
 
-Arcad(e) uses Circle Gateway Nanopayments through
+Adcade uses Circle Gateway Nanopayments through
 `@circle-fin/x402-batching`.
 
 The buyer flow is:
 
 1. Create or import an EVM private key.
-2. Fund that address with Arc Testnet USDC from the Circle faucet.
-3. Run `wallet.ts deposit <amount>` to move USDC into Circle Gateway.
+2. Fund that address with Arc Testnet USDC from the Circle Faucet:
+   `https://faucet.circle.com/`
+3. Run `adcade wallet deposit <amount>` to move USDC into Circle Gateway.
 4. Each bid calls `GatewayClient.pay(...)`, which handles the x402 `402`
    challenge, signs the payment authorization, and retries the request.
 
@@ -89,15 +96,25 @@ faucet or an existing funded wallet.
 Generate a fresh local buyer key:
 
 ```bash
-bun run skills/arcade-bidder-agent/scripts/wallet.ts create
+bun run packages/adcade-cli/src/index.ts wallet create
+```
+
+Or from git:
+
+```bash
+bunx <git_path> wallet create
 ```
 
 This prints a private key and address. Store the private key securely, export it
 as `ARCADE_BUYER_PRIVATE_KEY`, then fund the address.
 
+In the faucet UI, choose Arc Testnet, choose USDC, paste the generated address,
+and request funds. Arc uses USDC for gas, and its ERC-20 USDC interface also
+uses the same native USDC balance.
+
 ## Required Inputs
 
-- `ARCADE_API_URL`: Arcad(e) auction API, for example `http://localhost:8787/api`
+- `ARCADE_API_URL`: Adcade auction API, for example `http://localhost:8787/api`
 - `ARCADE_SURFACE_ID`: target surface, for example `raceway-billboard-main`
 - `AGENT_ID`: stable machine identity for this bidder
 - `COMPANY_NAME`: advertiser name
@@ -147,7 +164,7 @@ Make the whole game about us and cover every surface.
 
 ## API Reference
 
-Arcad(e) bidder endpoints:
+Adcade bidder endpoints:
 
 - `POST /agents/quote`: get suggested bid and reason.
 - `POST /surfaces/{surfaceId}/bids`: submit a paid bid.
