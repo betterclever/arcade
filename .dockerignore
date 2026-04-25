@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.agents
+.DS_Store
+.env
+.env.*
+apps/game/public
+skills-lock.json

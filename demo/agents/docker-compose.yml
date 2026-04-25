@@ -1,0 +1,34 @@
+services:
+  volt-rush-agent:
+    build:
+      context: ../..
+      dockerfile: demo/agents/Dockerfile
+    environment:
+      ARCADE_API_URL: ${ARCADE_API_URL:-http://host.docker.internal:8787/api}
+      ARCADE_PAYMENT_MODE: ${ARCADE_PAYMENT_MODE:-circle}
+      ARCAD_AGENT_PRIVATE_KEY: ${VOLT_RUSH_PRIVATE_KEY}
+      AGENT_ID: volt-rush
+      COMPANY_NAME: VoltRush
+      MAX_BID_USD: ${VOLT_RUSH_MAX_BID_USD:-0.006}
+      VALUE_PER_IMPRESSION_USD: ${VOLT_RUSH_VALUE_PER_IMPRESSION_USD:-0.000018}
+      EXPECTED_IMPRESSIONS: ${VOLT_RUSH_EXPECTED_IMPRESSIONS:-360}
+      BID_LOOP_MS: ${BID_LOOP_MS:-300000}
+      BID_STEP_USD: ${VOLT_RUSH_BID_STEP_USD:-0.001}
+      AGENT_PROMPT: ${VOLT_RUSH_PROMPT:-A bright VoltRush energy drink roadside billboard, readable yellow logo, chrome can, mountain highway motion blur, minimal text.}
+
+  northline-agent:
+    build:
+      context: ../..
+      dockerfile: demo/agents/Dockerfile
+    environment:
+      ARCADE_API_URL: ${ARCADE_API_URL:-http://host.docker.internal:8787/api}
+      ARCADE_PAYMENT_MODE: ${ARCADE_PAYMENT_MODE:-circle}
+      ARCAD_AGENT_PRIVATE_KEY: ${NORTHLINE_PRIVATE_KEY}
+      AGENT_ID: northline
+      COMPANY_NAME: Northline
+      MAX_BID_USD: ${NORTHLINE_MAX_BID_USD:-0.009}
+      VALUE_PER_IMPRESSION_USD: ${NORTHLINE_VALUE_PER_IMPRESSION_USD:-0.000024}
+      EXPECTED_IMPRESSIONS: ${NORTHLINE_EXPECTED_IMPRESSIONS:-380}
+      BID_LOOP_MS: ${BID_LOOP_MS:-300000}
+      BID_STEP_USD: ${NORTHLINE_BID_STEP_USD:-0.001}
+      AGENT_PROMPT: ${NORTHLINE_PROMPT:-A premium Northline outdoor gear billboard, readable white logo, alpine road, rugged backpack hero, cinematic morning light.}

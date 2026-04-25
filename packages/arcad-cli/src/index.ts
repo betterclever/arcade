@@ -486,7 +486,7 @@ async function paidJson(config: AgentConfig, method: HttpMethod, path: string, b
     const client = createGatewayClient();
     const result = await client.pay(`${config.apiUrl}${path}`, {
       method: method as "GET" | "POST" | "PUT" | "DELETE",
-      headers: { "content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body,
     });
     return result.data;
@@ -605,6 +605,10 @@ async function importKeystore(name: string, privateKey: `0x${string}`) {
 }
 
 function loadActivePrivateKey() {
+  const envPrivateKey = process.env.ARCAD_PRIVATE_KEY ?? process.env.ARCAD_AGENT_PRIVATE_KEY;
+  if (envPrivateKey) {
+    return envPrivateKey as `0x${string}`;
+  }
   const name = requireActiveWalletName();
   return loadPrivateKeyForAccount(name);
 }
