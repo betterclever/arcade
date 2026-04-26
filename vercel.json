@@ -1,4 +1,5 @@
 {
+  "name": "arcade",
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun run --cwd packages/arcade-sdk build && bun run --cwd apps/game build",
   "outputDirectory": "apps/game/dist",
