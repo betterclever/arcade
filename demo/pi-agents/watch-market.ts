@@ -18,7 +18,7 @@ type Market = {
 	bids: Bid[];
 };
 
-const root = "/Users/betterclever/newprojects/experiments/circlehack";
+const root = process.env.ARCAD_ROOT ?? process.cwd();
 const apiUrl = process.env.ARCADE_API_URL ?? "http://localhost:8787/api";
 const intervalMs = Math.max(2_000, Number(process.env.ARCAD_MARKET_WATCH_MS ?? 5_000));
 const controlExtension =
