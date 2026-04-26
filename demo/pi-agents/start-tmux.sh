@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="${ARCAD_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 SESSION="${ARCAD_PI_TMUX_SESSION:-arcad-pi-agents}"
+TMUX_SHELL="${ARCAD_TMUX_SHELL:-${SHELL:-bash}}"
 PI_MODEL_VALUE="${PI_MODEL:-quotio/gpt-5.4-mini}"
 PI_WAKE_MS_VALUE="${ARCAD_PI_WAKE_MS:-15000}"
 MARKET_WATCH_MS_VALUE="${ARCAD_MARKET_WATCH_MS:-5000}"
@@ -26,10 +27,10 @@ rm -f "$HOME/.pi/session-control/arcad-mission-control-ai.alias" \
       "$HOME/.pi/session-control"/*.sock 2>/dev/null || true
 sleep 1
 
-tmux new-session -d -s "$SESSION" -n control-room -c "$ROOT" zsh
-tmux split-window -h -p 36 -t "$SESSION:0" -c "$ROOT" zsh
-tmux split-window -v -p 66 -t "$SESSION:0.1" -c "$ROOT" zsh
-tmux split-window -v -p 50 -t "$SESSION:0.2" -c "$ROOT" zsh
+tmux new-session -d -s "$SESSION" -n control-room -c "$ROOT" "$TMUX_SHELL"
+tmux split-window -h -p 36 -t "$SESSION:0" -c "$ROOT" "$TMUX_SHELL"
+tmux split-window -v -p 66 -t "$SESSION:0.1" -c "$ROOT" "$TMUX_SHELL"
+tmux split-window -v -p 50 -t "$SESSION:0.2" -c "$ROOT" "$TMUX_SHELL"
 
 COMMON="source /tmp/arcad-agents.env; [[ -f /tmp/arcad-server.env ]] && source /tmp/arcad-server.env; [[ -f /tmp/arcad-pi-model.env ]] && source /tmp/arcad-pi-model.env; export ARCAD_ROOT='$ROOT' ARCADE_API_URL=http://localhost:8787/api ARCADE_PAYMENT_MODE=circle ARCAD_PI_WAKE=1 ARCAD_PI_WAKE_MS=$PI_WAKE_MS_VALUE ARCAD_MARKET_WATCH_MS=$MARKET_WATCH_MS_VALUE PI_MODEL='$PI_MODEL_VALUE' ARCAD_WATCH_AGENTS=mission-control-ai:arcad-mission-control-ai,sutro-inference:arcad-sutro-inference"
 
